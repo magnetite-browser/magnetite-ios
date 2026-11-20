@@ -9,6 +9,9 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    # StackForge's team at Apple. Signing a build for a device needs your own
+    # (DEVELOPMENT_TEAM=… on the command line); the simulator needs none.
+    DEVELOPMENT_TEAM: 5KRV4TD9X2
 targets:
   Magnetite:
     type: application
@@ -24,6 +27,8 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Magnetite
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
