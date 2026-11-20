@@ -43,9 +43,10 @@ desktop that takes over the tabs the phone lists.
 - `App/Model/Favicons.swift`: site icons, kept when a page of the site was
   loaded here; a row never contacts a site.
 - `App/Web`: one tab's web view and its state.
-- `App/Views`: the page with its bar, the sidebar, joining, settings. On a
-  wide screen (iPad) the sidebar is a column beside the page; on a narrow
-  one it is the start page and a sheet.
+- `App/Views`: the page with its bar, the sidebar, joining (by typing the
+  24 words or by scanning the QR code a computer shows beside them),
+  settings. On a wide screen (iPad) the sidebar is a column beside the
+  page; on a narrow one it is the start page and a sheet.
 - `Core/`: generated, not in the repository.
 
 ## Licence
