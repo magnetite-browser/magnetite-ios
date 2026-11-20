@@ -12,7 +12,10 @@ scripts/project.sh
 (cd "$CORE" && exec cargo run --quiet --example demo_server) > /dev/null &
 server=$!
 trap 'kill $server 2>/dev/null || true' EXIT
-until nc -z localhost 8787 2>/dev/null; do sleep 1; done
+until nc -z localhost 8787 2>/dev/null; do
+  kill -0 $server 2>/dev/null || { echo "The demo server did not start" >&2; exit 1; }
+  sleep 1
+done
 
 for device in "${DEVICES[@]}"; do
   out="build/screenshots/$device"
