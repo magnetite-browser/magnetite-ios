@@ -1,0 +1,53 @@
+# Builds the app for a v* tag and uploads it to App Store Connect, where it
+# shows up under TestFlight. Picking the build for a release and sending it
+# to review are manual steps there. See "Release" in README.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  upload:
+    name: Upload to App Store Connect
+    runs-on: macos-26
+    timeout-minutes: 60
+    # The App Store Connect key lives in this environment, limited to v*
+    # tags; a run waits there for a maintainer's approval.
+    environment: release
+    env:
+      MAGNETITE_MOBILE_CORE: ${{ github.workspace }}/magnetite-mobile-core
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the tag against the version
+        run: |
+          version="$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' project.yml)"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::tag $GITHUB_REF_NAME, but project.yml says version $version"
+            exit 1
+          fi
+      - name: Fetch the core
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: magnetite-browser/magnetite-mobile-core
+          path: magnetite-mobile-core
+          persist-credentials: false
+      - run: brew install xcodegen
+      - name: Archive and upload
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_PATH: ${{ runner.temp }}/asc-key.p8
+        run: |
+          (umask 077 && printf '%s\n' "$ASC_KEY_P8" > "$ASC_KEY_PATH")
+          trap 'rm -f "$ASC_KEY_PATH"' EXIT
+          scripts/release.sh

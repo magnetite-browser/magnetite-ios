@@ -36,6 +36,17 @@ To try it by hand, join `http://localhost:8787` ("Your own server") with the
 words the demo server prints. `curl -X POST localhost:8787/demo/take` plays a
 desktop that takes over the tabs the phone lists.
 
+## Release
+
+Raise `MARKETING_VERSION` in `project.yml` with a pull request, then tag the
+merged commit `v<version>`. The release workflow waits for a maintainer's
+approval, then archives the app and uploads it to App Store Connect, where
+it shows up under TestFlight. `scripts/release.sh` is what it runs, and does
+the same from a Mac; it says at its top what it needs.
+
+What the App Store page says is in [docs/app-store.md](docs/app-store.md);
+`scripts/screenshots.sh` takes its pictures.
+
 ## Layout
 
 - `App/Model`: the tabs of this device (`Browser`), the sync chain (`Sync`),
