@@ -19,7 +19,7 @@ jobs:
   # the simulator. The UI tests are run by hand.
   build:
     name: Build
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       MAGNETITE_MOBILE_CORE: ${{ github.workspace }}/magnetite-mobile-core
     steps:
