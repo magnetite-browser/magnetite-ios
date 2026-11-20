@@ -23,6 +23,7 @@ struct JoinView: View {
             Form {
                 Section {
                     Button("Scan QR Code", systemImage: "qrcode.viewfinder") { scanning = true }
+                        .disabled(sync.busy)
                 } footer: {
                     Text("On your computer: Settings → Sync → Show sync code. Or enter its server and words below.")
                 }
@@ -85,7 +86,9 @@ struct JoinView: View {
         }
     }
 
+    /// One join at a time: a second one would write over the first one's chain.
     private func join() async {
+        guard !sync.busy else { return }
         await sync.join(server: server, words: words)
         if sync.joined {
             await browser.syncNow()

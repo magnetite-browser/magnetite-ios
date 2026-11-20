@@ -9,7 +9,7 @@ struct ScannerView: View {
     let onRead: (JoinLink) -> Void
 
     @Environment(\.dismiss) private var dismiss
-    /// Whether the camera may be used; `nil` while the system asks.
+    /// Whether the camera can be used: allowed and started; `nil` while the system asks.
     @State private var allowed: Bool?
 
     var body: some View {
@@ -18,9 +18,9 @@ struct ScannerView: View {
             // title and the task below would have no view to belong to.
             ZStack {
                 if allowed == true, DataScannerViewController.isSupported {
-                    CodeScanner { text in
+                    CodeScanner(onRead: { text in
                         if let link = JoinLink(text) { onRead(link) }
-                    }
+                    }, onFailure: { allowed = false })
                     .ignoresSafeArea(edges: .bottom)
                     .safeAreaInset(edge: .bottom) {
                         Text("On your computer: Settings → Sync → Show sync code")
@@ -53,13 +53,20 @@ struct ScannerView: View {
 /// The system's scanner, set to QR codes.
 private struct CodeScanner: UIViewControllerRepresentable {
     let onRead: (String) -> Void
+    /// The camera did not start.
+    let onFailure: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onRead: onRead) }
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
         let scanner = DataScannerViewController(recognizedDataTypes: [.barcode(symbologies: [.qr])])
         scanner.delegate = context.coordinator
-        try? scanner.startScanning()
+        do {
+            try scanner.startScanning()
+        } catch {
+            // Not while the view is being made: its state may not change then.
+            DispatchQueue.main.async(execute: onFailure)
+        }
         return scanner
     }
 
