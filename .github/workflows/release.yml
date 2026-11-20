@@ -16,7 +16,8 @@ concurrency:
 jobs:
   upload:
     name: Upload to App Store Connect
-    runs-on: macos-26
+    # Xcode 27: App Store Connect wants the iOS 27 SDK from April 2027.
+    runs-on: xcode-27
     timeout-minutes: 60
     # The App Store Connect key lives in this environment, limited to v*
     # tags; a run waits there for a maintainer's approval.
