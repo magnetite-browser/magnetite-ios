@@ -25,6 +25,7 @@ final class Browser {
     let sync = Sync()
     let history = BrowsingHistory()
     let blocker = ContentBlocker()
+    let downloads = Downloads()
     private(set) var tabs: [Tab] = []
     /// Tabs sent to the desktop that no desktop has opened yet.
     private(set) var sent: [Tab] = []
@@ -236,10 +237,13 @@ final class Browser {
     func page(for tab: Tab) -> WebPage {
         if let page = pages[tab.id] { return page }
         let space = spaces.first { $0.id == tab.space } ?? spaces[0]
-        let page = WebPage(url: tab.url, store: store(for: space), blocker: blocker)
+        let page = WebPage(url: tab.url, store: store(for: space), blocker: blocker, downloads: downloads)
         let id = tab.id
         page.changed = { [weak self] url, title in self?.note(id, url: url, title: title) }
         page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground) }
+        page.closes = { [weak self] in
+            if let self, let tab = tabs.first(where: { $0.id == id }) { close(tab) }
+        }
         page.sendsToDesktop = { [weak self] url in
             guard let self, sync.joined else { return nil }
             return { self.sendToDesktop(url, from: space) }

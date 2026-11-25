@@ -64,8 +64,9 @@ What the App Store page says is in [docs/app-store.md](docs/app-store.md);
   the pages visited here (`BrowsingHistory`, kept by the core, never
   synced, nothing from private spaces), content blocking
   (`ContentBlocker`: the desktop's filter lists, compiled by WebKit into
-  one rule list), what the address field's text means (`Address`) and
-  offers while typing (`Suggestions`).
+  one rule list), downloads (`Downloads`: into Downloads in the app's
+  documents, which the Files app shows), what the address field's text
+  means (`Address`) and offers while typing (`Suggestions`).
 - `App/Model/Favicons.swift`: site icons, kept when a page of the site was
   loaded here; a row never contacts a site.
 - `App/Web`: one tab's web view and its state.

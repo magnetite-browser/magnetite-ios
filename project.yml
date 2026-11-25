@@ -53,6 +53,10 @@ targets:
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true
         ITSAppUsesNonExemptEncryption: false
+        # Downloads (Documents/Downloads) show in the Files app under the
+        # app's name.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         # Websites ask through the system first, each site for itself.
         NSCameraUsageDescription: Scans the QR code of your sync code, and lets a website you allow use the camera. Magnetite keeps and sends nothing of it.
         NSMicrophoneUsageDescription: Lets a website you allow use the microphone, for a call for example. Magnetite keeps and sends nothing of it.

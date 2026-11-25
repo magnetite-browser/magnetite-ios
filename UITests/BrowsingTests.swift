@@ -107,6 +107,24 @@ final class BrowsingTests: XCTestCase {
         XCTAssertTrue(blocked.waitForExistence(timeout: 10))
     }
 
+    /// A file no page shows is downloaded: the tab opened for it goes
+    /// again, a card over the bar shows it, and Downloads lists it.
+    func testAFileIsDownloaded() {
+        app.textFields["Search or enter address"].tap()
+        app.typeText("\(server)/demo/magnetite-demo.bin\n")
+        // An earlier run's file is there: this one is "magnetite-demo (2).bin".
+        let named = NSPredicate(format: "label BEGINSWITH 'magnetite-demo'")
+        let card = app.buttons.matching(named).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["Wikipedia"].exists, "back on the start page")
+        card.tap()
+        let row = app.collectionViews.staticTexts.matching(named).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.collectionViews.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '4 KB'"))
+            .firstMatch.waitForExistence(timeout: 10))
+        app.buttons["Done"].tap()
+    }
+
     private func menu(_ item: String) {
         app.buttons["More"].tap()
         app.collectionViews.buttons[item].tap()
