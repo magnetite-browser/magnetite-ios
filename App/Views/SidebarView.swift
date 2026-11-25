@@ -220,7 +220,8 @@ private struct SpacePage: View {
                 if space.pending { Waiting() }
             }
             .contextMenu {
-                if editable {
+                // The phone's private space is not the chain's.
+                if editable && space.id != Browser.privateSpace.id {
                     Button("Rename Space…", systemImage: "pencil") {
                         naming = Naming(id: space.id, title: space.title)
                     }
