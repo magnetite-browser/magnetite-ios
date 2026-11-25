@@ -13,6 +13,8 @@ struct RootView: View {
     /// Narrow: the sidebar sheet is up. Wide: the sidebar column is shown.
     @State private var sheetShown = false
     @State private var columnShown = true
+    /// Narrow: the downloads, from the card over the bar.
+    @State private var downloadsShown = false
 
     var body: some View {
         Group {
@@ -51,8 +53,17 @@ struct RootView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            PhoneBar(page: page, sidebarShown: $sheetShown)
+            // The download card sits above the bar, not in it: the bar
+            // measures itself to rise onto the keyboard, which then simply
+            // covers the card.
+            VStack(spacing: 0) {
+                DownloadCard { downloadsShown = true }
+                    .padding(.horizontal, 14)
+                PhoneBar(page: page, sidebarShown: $sheetShown)
+            }
+            .animation(.smooth(duration: 0.3), value: browser.downloads.recent)
         }
+        .sheet(isPresented: $downloadsShown) { DownloadsView() }
         // The bar moves for the keyboard by itself; a page makes room itself.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $sheetShown) {

@@ -38,9 +38,6 @@ struct PhoneBar: View {
                     text = ""
                 }
             }
-            if !editing {
-                DownloadCard { library = .downloads }
-            }
             ZStack {
                 if small, let page {
                     SiteLabel(page: page)
@@ -53,7 +50,6 @@ struct PhoneBar: View {
         }
         .animation(.smooth(duration: 0.3), value: small)
         .animation(.smooth(duration: 0.25), value: editing)
-        .animation(.smooth(duration: 0.3), value: browser.downloads.recent)
         .padding(.horizontal, 14)
         .padding(.vertical, small ? 2 : 8)
         .frame(maxWidth: .infinity)
