@@ -144,18 +144,29 @@ final class WebPage: NSObject {
         })
     }
 
+    /// How far the reader scrolled in one direction, so far.
+    @ObservationIgnored private var travel: CGFloat = 0
+
     /// Only the reader's own scrolling counts, not a page that scrolls itself.
+    /// Movement adds up while it keeps its direction, so a slow scroll
+    /// counts as much as a quick one.
     private func scrolled(_ scroll: UIScrollView, by delta: CGFloat) {
-        guard scroll.isTracking || scroll.isDecelerating else { return }
+        guard scroll.isTracking || scroll.isDecelerating, delta != 0 else { return }
         let top = scroll.contentOffset.y + scroll.adjustedContentInset.top
         let bottom = scroll.contentSize.height + scroll.adjustedContentInset.bottom
             - scroll.contentOffset.y - scroll.bounds.height
         if top < 24 || bottom < 2 {
+            travel = 0
             if reading { reading = false }
-        } else if delta > 4, !reading {
+            return
+        }
+        travel = (travel.sign == delta.sign ? travel : 0) + delta
+        if travel > 4, !reading {
             reading = true
-        } else if delta < -8, reading {
+            travel = 0
+        } else if travel < -8, reading {
             reading = false
+            travel = 0
         }
     }
 }
@@ -176,6 +187,8 @@ extension WebPage: WKNavigationDelegate {
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         failure = nil
+        // A new page starts with the whole bar.
+        reading = false
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

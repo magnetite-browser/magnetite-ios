@@ -175,6 +175,11 @@ struct TopBar: View {
         .padding(.vertical, 6)
         .background(.bar)
         .background { HardwareKeys(page: page, editing: $editing, newTab: newTab) }
+        // A page picked in the sidebar while typing ends the typing; New Tab
+        // (no page in front) keeps it.
+        .onChange(of: browser.front) { _, now in
+            if now != nil { editing = false }
+        }
     }
 
     /// The start page, typing an address.
