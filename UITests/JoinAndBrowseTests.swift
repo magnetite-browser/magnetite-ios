@@ -45,7 +45,7 @@ final class JoinAndBrowseTests: XCTestCase {
         app.buttons["Home"].tap()
         app.staticTexts["Example"].tap()
         XCTAssertTrue(app.webViews.staticTexts["Learn more"].waitForExistence(timeout: 30))
-        XCTAssertTrue(app.staticTexts["example.org"].exists)
+        XCTAssertTrue(app.buttons["example.org"].exists)
         keep("3-page")
 
         // The tab is listed as open here, in the space it was opened from.
@@ -71,7 +71,7 @@ final class JoinAndBrowseTests: XCTestCase {
 
         // A site whose page was loaded here shows its icon from then on.
         app.staticTexts["Wikipedia"].tap()
-        XCTAssertTrue(app.staticTexts["en.wikipedia.org"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["en.wikipedia.org"].waitForExistence(timeout: 30))
         sleep(6)
         app.buttons["Tabs"].tap()
         XCTAssertTrue(app.staticTexts["Open here"].waitForExistence(timeout: 5))

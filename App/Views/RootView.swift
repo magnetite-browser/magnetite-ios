@@ -1,12 +1,14 @@
 import SwiftUI
 
 /// On a narrow screen (iPhone, an iPad window beside another app): the page
-/// in front with the bar below it, and the sidebar as the start page and as
-/// a sheet. On a wide one (iPad): the sidebar beside the page, as on the
-/// desktop, with the bar above the page.
+/// in front, from the status bar down, with the bar floating over its
+/// bottom, and the sidebar as the start page and as a sheet. On a wide one
+/// (iPad): the sidebar beside the page, as on the desktop, with the bar
+/// above the page.
 struct RootView: View {
     @Environment(Browser.self) private var browser
     @Environment(Sync.self) private var sync
+    @Environment(StatusBar.self) private var statusBar
     @Environment(\.horizontalSizeClass) private var width
     /// Narrow: the sidebar sheet is up. Wide: the sidebar column is shown.
     @State private var sheetShown = false
@@ -17,22 +19,42 @@ struct RootView: View {
             if width == .regular { wide } else { narrow }
         }
         .onChange(of: sync.sidebar) { browser.settle() }
+        .onChange(of: overDarkPage, initial: true) { statusBar.overDarkPage = overDarkPage }
         .tint(browser.space.tint)
+    }
+
+    /// Whether the status bar is over a dark page; `nil`: over the app's own
+    /// background.
+    private var overDarkPage: Bool? {
+        guard width != .regular, browser.frontTab != nil else { return nil }
+        return page?.topColor?.isDark
     }
 
     private var page: WebPage? { browser.frontTab.map(browser.page(for:)) }
 
     private var narrow: some View {
-        Group {
+        // A ZStack, not a Group: a Group would give each of its views a bar
+        // of its own, and switching between page and start page would lose
+        // what the bar holds (the keyboard, the text typed).
+        ZStack {
             if let tab = browser.frontTab, let page {
-                PageView(page: page).id(tab.id)
+                PageView(page: page)
+                    .id(tab.id)
+                    // Under the bar, which keeps the end of the page clear,
+                    // and under the keyboard, which the page makes room for itself.
+                    .ignoresSafeArea(edges: .bottom)
+                    .onAppear { page.keepClear(bottom: PhoneBar.height) }
+                    // What is above the page: its top colour.
+                    .background((page.topColor.map(Color.init(uiColor:)) ?? Color(.systemBackground)).ignoresSafeArea())
             } else {
                 SidebarView()
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            AddressBar(page: page, sidebarShown: $sheetShown)
+            PhoneBar(page: page, sidebarShown: $sheetShown)
         }
+        // The bar moves for the keyboard by itself; a page makes room itself.
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .sheet(isPresented: $sheetShown) {
             SidebarView(dismissable: true)
                 .presentationDragIndicator(.visible)
@@ -49,7 +71,7 @@ struct RootView: View {
                 Divider().ignoresSafeArea()
             }
             VStack(spacing: 0) {
-                AddressBar(page: page, sidebarShown: $columnShown, wide: true)
+                TopBar(page: page, sidebarShown: $columnShown)
                 if let tab = browser.frontTab, let page {
                     PageView(page: page).id(tab.id)
                 } else {
@@ -62,20 +84,14 @@ struct RootView: View {
     }
 }
 
-/// A page, its loading bar, and what is shown when it cannot be loaded.
+/// A page, and what is shown when it cannot be loaded. How far it loaded
+/// shows in the address field.
 private struct PageView: View {
     let page: WebPage
 
     var body: some View {
         WebView(page: page)
             .ignoresSafeArea(.container, edges: .horizontal)
-            .overlay(alignment: .top) {
-                if page.loading {
-                    ProgressView(value: page.progress)
-                        .progressViewStyle(.linear)
-                        .frame(height: 2)
-                }
-            }
             .overlay {
                 if let failure = page.failure {
                     ContentUnavailableView {

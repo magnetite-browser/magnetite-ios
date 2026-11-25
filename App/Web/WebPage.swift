@@ -14,6 +14,16 @@ final class WebPage: NSObject {
     private(set) var canGoForward = false
     /// Why the page could not be loaded, while that is what is shown.
     private(set) var failure: String?
+    /// The colour at the page's top edge: its `theme-color`, else its
+    /// background. Fills what is above the page (the status bar).
+    private(set) var topColor: UIColor?
+    /// The reader scrolled down into the page: the narrow bar makes room.
+    /// Scrolling up, reaching an end of the page or a tap brings it back.
+    var reading = false
+    /// Asks sites for their desktop pages. Kept for this tab until it closes.
+    var desktopSite = false {
+        didSet { if desktopSite != oldValue { view.reload() } }
+    }
 
     /// Called when the address or title changed.
     @ObservationIgnored var changed: ((URL?, String) -> Void)?
@@ -32,6 +42,7 @@ final class WebPage: NSObject {
         view = WKWebView(frame: .zero, configuration: config)
         super.init()
         view.allowsBackForwardNavigationGestures = true
+        view.isFindInteractionEnabled = true
         view.navigationDelegate = self
         view.uiDelegate = self
         #if DEBUG
@@ -52,6 +63,48 @@ final class WebPage: NSObject {
         } else {
             view.reload()
         }
+    }
+
+    /// The text size of the page, as a share of the site's own.
+    private(set) var zoom: CGFloat = 1
+
+    /// Make the page's text larger (`steps` > 0) or smaller, by tenths.
+    func zoom(by steps: Int) {
+        zoom = min(max((zoom * 10).rounded() / 10 + CGFloat(steps) / 10, 0.5), 3)
+        view.pageZoom = zoom
+    }
+
+    func zoomReset() {
+        zoom = 1
+        view.pageZoom = 1
+    }
+
+    func findOnPage() {
+        view.findInteraction?.presentFindNavigator(showingReplace: false)
+    }
+
+    @ObservationIgnored private var findWatch: Task<Void, Never>?
+
+    /// Find on Page's bar is up: `ended` runs once it is gone. Closing the
+    /// bar sends no last keyboard notification, so without this the app
+    /// goes on making room for a bar that is not there.
+    func watchFind(ended: @escaping @MainActor () -> Void) {
+        guard findWatch == nil, view.findInteraction?.isFindNavigatorVisible == true else { return }
+        findWatch = Task { [weak self] in
+            while let self, self.view.findInteraction?.isFindNavigatorVisible == true {
+                try? await Task.sleep(for: .milliseconds(300))
+            }
+            self?.findWatch = nil
+            ended()
+        }
+    }
+
+    /// Room for the bar floating over the page's bottom edge: the end of the
+    /// page can be scrolled above it, and fixed parts of the page sit above it.
+    func keepClear(bottom: CGFloat) {
+        guard view.scrollView.contentInset.bottom != bottom else { return }
+        view.scrollView.contentInset.bottom = bottom
+        view.scrollView.verticalScrollIndicatorInsets.bottom = bottom
     }
 
     @objc private func pulled(_ control: UIRefreshControl) {
@@ -81,23 +134,61 @@ final class WebPage: NSObject {
         on(\.isLoading) { $0.loading = $1.isLoading }
         on(\.canGoBack) { $0.canGoBack = $1.canGoBack }
         on(\.canGoForward) { $0.canGoForward = $1.canGoForward }
+        on(\.themeColor) { $0.topColor = $1.themeColor ?? $1.underPageBackgroundColor }
+        on(\.underPageBackgroundColor) { $0.topColor = $1.themeColor ?? $1.underPageBackgroundColor }
+        watching.append(view.scrollView.observe(\.contentOffset, options: [.old, .new]) { [weak self] scroll, change in
+            MainActor.assumeIsolated {
+                guard let self, let old = change.oldValue, let new = change.newValue else { return }
+                self.scrolled(scroll, by: new.y - old.y)
+            }
+        })
+    }
+
+    /// How far the reader scrolled in one direction, so far.
+    @ObservationIgnored private var travel: CGFloat = 0
+
+    /// Only the reader's own scrolling counts, not a page that scrolls itself.
+    /// Movement adds up while it keeps its direction, so a slow scroll
+    /// counts as much as a quick one.
+    private func scrolled(_ scroll: UIScrollView, by delta: CGFloat) {
+        guard scroll.isTracking || scroll.isDecelerating, delta != 0 else { return }
+        let top = scroll.contentOffset.y + scroll.adjustedContentInset.top
+        let bottom = scroll.contentSize.height + scroll.adjustedContentInset.bottom
+            - scroll.contentOffset.y - scroll.bounds.height
+        if top < 24 || bottom < 2 {
+            travel = 0
+            if reading { reading = false }
+            return
+        }
+        travel = (travel.sign == delta.sign ? travel : 0) + delta
+        if travel > 4, !reading {
+            reading = true
+            travel = 0
+        } else if travel < -8, reading {
+            reading = false
+            travel = 0
+        }
     }
 }
 
 extension WebPage: WKNavigationDelegate {
-    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
-        guard let url = action.request.url, let scheme = url.scheme?.lowercased() else { return .allow }
-        if ["http", "https", "about", "blob", "data"].contains(scheme) { return .allow }
+    func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
+                 preferences: WKWebpagePreferences) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
+        preferences.preferredContentMode = desktopSite ? .desktop : .mobile
+        guard let url = action.request.url, let scheme = url.scheme?.lowercased() else { return (.allow, preferences) }
+        if ["http", "https", "about", "blob", "data"].contains(scheme) { return (.allow, preferences) }
         // Mail, phone, app links: the system's business, and only when the
         // page itself goes there, not one of its frames.
         if action.targetFrame?.isMainFrame ?? true {
             await UIApplication.shared.open(url)
         }
-        return .cancel
+        return (.cancel, preferences)
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
         failure = nil
+        // A new page starts with the whole bar.
+        reading = false
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
