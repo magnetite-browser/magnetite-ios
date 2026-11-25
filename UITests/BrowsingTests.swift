@@ -58,4 +58,11 @@ final class BrowsingTests: XCTestCase {
         XCTAssertTrue(app.buttons["example.org"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.buttons["Tabs"].value as? String, "\(before + 1)")
     }
+
+    /// A web link another app hands over (Magnetite as the default browser)
+    /// opens as a tab.
+    func testALinkFromAnotherAppOpensAsATab() {
+        app.open(URL(string: "https://example.org/")!)
+        XCTAssertTrue(app.buttons["example.org"].waitForExistence(timeout: 30))
+    }
 }

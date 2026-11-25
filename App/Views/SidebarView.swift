@@ -39,6 +39,14 @@ struct SidebarView: View {
         }
         .sheet(isPresented: $settingsShown) { SettingsView() }
         .sheet(isPresented: $joinShown) { JoinView() }
+        // A page came to the front (a link from another app): on a wide
+        // screen the sidebar stays, so its sheets go, not to hide the page.
+        .onChange(of: browser.front) { _, now in
+            if now != nil {
+                settingsShown = false
+                joinShown = false
+            }
+        }
         .onChange(of: naming?.id) { name = naming?.title ?? "" }
         .alert(naming?.id == Naming.newSpace ? "New Space" : "Rename",
                isPresented: Binding(get: { naming != nil }, set: { if !$0 { naming = nil } }),

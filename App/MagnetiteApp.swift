@@ -26,6 +26,19 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = RootController(browser: AppDelegate.browser)
         window.makeKeyAndVisible()
         self.window = window
+        open(options.urlContexts)
+    }
+
+    /// A link from another app, Magnetite being the default browser.
+    func scene(_ scene: UIScene, openURLContexts contexts: Set<UIOpenURLContext>) {
+        open(contexts)
+    }
+
+    /// Web pages open as new tabs of the space in front; nothing else does.
+    private func open(_ contexts: Set<UIOpenURLContext>) {
+        for url in contexts.map(\.url) where ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
+            AppDelegate.browser.open(url)
+        }
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
