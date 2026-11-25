@@ -29,6 +29,11 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Scans the QR code of your sync code. Nothing the camera sees is kept or sent.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
