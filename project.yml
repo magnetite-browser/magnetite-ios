@@ -34,6 +34,11 @@ targets:
         # tab's page can be on one screen only.
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # Web links from other apps, once Magnetite may be the default
+        # browser: see docs/default-browser.md.
+        CFBundleURLTypes:
+          - CFBundleURLName: Web pages
+            CFBundleURLSchemes: [http, https]
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
