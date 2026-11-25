@@ -32,9 +32,14 @@ xcodebuild -project Magnetite.xcodeproj -scheme Magnetite \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
+`TEST_RUNNER_DEMO_SERVER=http://localhost:8788` points `EditingTests` at a
+demo server on another port (`DEMO_PORT=8788 cargo run --example demo_server`).
+
 To try it by hand, join `http://localhost:8787` ("Your own server") with the
 words the demo server prints. `curl -X POST localhost:8787/demo/take` plays a
-desktop that takes over the tabs the phone lists.
+desktop that takes over the tabs the phone lists, `…/demo/apply` one that
+makes the changes to the sidebar the phone asked for (pin, favorite, new
+space, rename, remove).
 
 ## Release
 

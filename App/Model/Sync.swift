@@ -3,7 +3,9 @@ import Observation
 import UIKit
 
 /// This device's place in a sync chain. It reads the chain's sidebar and
-/// never writes to it (see the core's notes on why).
+/// never writes to it (see the core's notes on why); its changes to the
+/// sidebar go to a desktop of the chain, which makes them, and show at once
+/// marked `pending` until then.
 @MainActor @Observable
 final class Sync {
     private(set) var sidebar: Sidebar?
@@ -98,18 +100,56 @@ final class Sync {
         return Device(id: id, name: UIDevice.current.name)
     }
 
-    /// Tell the chain which `tabs` are open here. Returns the ids of those
-    /// another device took over; none when it could not be asked.
+    /// Tell the chain which `tabs` are open here, and the changes to the
+    /// sidebar no desktop made yet. Returns the ids of the tabs another
+    /// device took over; none when it could not be asked.
     func exchange(_ tabs: [DeviceTab]) async -> [String] {
         guard let server, let secret = keychain.read() else { return [] }
-        let device = device
+        let (device, dir) = (device, dir)
         do {
             return try await Task.detached {
-                try MagnetiteCore.exchange(server: server, secret: secret, device: device, tabs: tabs)
+                try MagnetiteCore.exchange(server: server, secret: secret, device: device, tabs: tabs, dir: dir)
             }.value
         } catch {
             lastError = Self.text(of: error)
             return []
+        }
+    }
+
+    // MARK: Changes to the sidebar
+
+    /// Pin `url` last in `space`'s pinned tree.
+    func pin(_ url: URL, title: String, in space: Space) async {
+        await change { try MagnetiteCore.pin(dir: $0, space: space.id, url: url.absoluteString, title: title) }
+    }
+
+    /// Make `url` a favorite of `space`'s profile.
+    func addFavorite(_ url: URL, title: String, in space: Space) async {
+        await change { try MagnetiteCore.addFavorite(dir: $0, space: space.id, url: url.absoluteString, title: title) }
+    }
+
+    /// A new space after the others, with the desktop's default icon.
+    func newSpace(named title: String) async {
+        await change { try MagnetiteCore.newSpace(dir: $0, title: title, icon: nil) }
+    }
+
+    /// Name the space, folder, pinned page or favorite `item` `title`.
+    func rename(_ item: String, to title: String) async {
+        await change { try MagnetiteCore.rename(dir: $0, item: item, title: title) }
+    }
+
+    /// Unpin pinned page `item`, or remove favorite `item`.
+    func remove(_ item: String) async {
+        await change { try MagnetiteCore.remove(dir: $0, item: item) }
+    }
+
+    /// Keep a change for the desktop and show the sidebar with it.
+    private func change(_ make: @escaping @Sendable (String) throws -> Sidebar?) async {
+        let dir = dir
+        do {
+            if let shown = try await Task.detached(operation: { try make(dir) }).value { sidebar = shown }
+        } catch {
+            lastError = Self.text(of: error)
         }
     }
 
@@ -134,7 +174,27 @@ enum MagnetiteCore {
         try Magnetite.refresh(server: server, secret: secret, dir: dir)
     }
 
-    static func exchange(server: String, secret: String, device: Device, tabs: [DeviceTab]) throws -> [String] {
-        try Magnetite.exchange(server: server, secret: secret, device: device, tabs: tabs)
+    static func exchange(server: String, secret: String, device: Device, tabs: [DeviceTab], dir: String) throws -> [String] {
+        try Magnetite.exchange(server: server, secret: secret, device: device, tabs: tabs, dir: dir)
+    }
+
+    static func pin(dir: String, space: String, url: String, title: String) throws -> Sidebar? {
+        try Magnetite.pin(dir: dir, space: space, url: url, title: title)
+    }
+
+    static func addFavorite(dir: String, space: String, url: String, title: String) throws -> Sidebar? {
+        try Magnetite.addFavorite(dir: dir, space: space, url: url, title: title)
+    }
+
+    static func newSpace(dir: String, title: String, icon: String?) throws -> Sidebar? {
+        try Magnetite.newSpace(dir: dir, title: title, icon: icon)
+    }
+
+    static func rename(dir: String, item: String, title: String) throws -> Sidebar? {
+        try Magnetite.rename(dir: dir, item: item, title: title)
+    }
+
+    static func remove(dir: String, item: String) throws -> Sidebar? {
+        try Magnetite.remove(dir: dir, item: item)
     }
 }

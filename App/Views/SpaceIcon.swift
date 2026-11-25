@@ -59,6 +59,13 @@ struct SpaceIcon: View {
     ]
 }
 
+extension RowItem {
+    /// The page of a page row.
+    var page: Page? {
+        if case let .page(page) = self { page } else { nil }
+    }
+}
+
 extension Space {
     /// The space's colour, for buttons and marks; none: the app's own.
     var tint: Color? {

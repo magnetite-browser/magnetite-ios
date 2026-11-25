@@ -38,7 +38,7 @@ final class Browser {
 
     /// The space of a device that is in no chain.
     static let home = Space(id: "home", title: "Home", icon: "home", accent: nil, profileId: "home",
-                            ephemeral: false, favorites: [], pinned: [], today: [])
+                            ephemeral: false, favorites: [], pinned: [], today: [], pending: false)
 
     private struct Saved: Codable {
         var tabs: [Tab]
@@ -180,6 +180,15 @@ final class Browser {
     func forget(sent tab: Tab) {
         sent.removeAll { $0.id == tab.id }
         save()
+    }
+
+    /// Make a change to the chain's sidebar (`Sync`), then tell the chain at
+    /// once, so a desktop makes it soon.
+    func change(_ change: @escaping @MainActor (Sync) async -> Void) {
+        Task {
+            await change(sync)
+            await shareTabs()
+        }
     }
 
     /// Read the chain's sidebar, then tell the chain about the tabs here.

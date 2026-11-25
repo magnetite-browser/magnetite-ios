@@ -4,6 +4,10 @@ import SwiftUI
 /// spaces' icons below to pick one. A space's page holds its favorites, the
 /// pinned tree, the tabs open here and the Today tabs of the other devices.
 /// The start page, and a sheet over a page.
+///
+/// In a chain, holding an item renames or removes it, and "+" beside the
+/// spaces adds one. A desktop of the chain makes the change (`Sync`); until
+/// then it shows with a mark that it waits.
 struct SidebarView: View {
     @Environment(Browser.self) private var browser
     @Environment(Sync.self) private var sync
@@ -14,11 +18,14 @@ struct SidebarView: View {
     @State private var joinShown = false
     /// Folders folded shut, by id, in every space. Open is the usual state.
     @State private var folded: Set<String> = []
+    /// What is being renamed, or named (a new space: `newSpace`).
+    @State private var naming: Naming?
+    @State private var name = ""
 
     var body: some View {
         TabView(selection: Binding(get: { browser.space.id }, set: show)) {
             ForEach(browser.spaces, id: \.id) { space in
-                SpacePage(space: space, dismissable: dismissable, folded: $folded,
+                SpacePage(space: space, dismissable: dismissable, folded: $folded, naming: $naming,
                           settings: { settingsShown = true }, join: { joinShown = true })
                     .tag(space.id)
             }
@@ -26,10 +33,36 @@ struct SidebarView: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         .background { SpaceTint(space: browser.space) }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if browser.spaces.count > 1 { SpaceSwitcher() }
+            if browser.spaces.count > 1 || sync.joined {
+                SpaceSwitcher { naming = Naming(id: Naming.newSpace, title: "") }
+            }
         }
         .sheet(isPresented: $settingsShown) { SettingsView() }
         .sheet(isPresented: $joinShown) { JoinView() }
+        .onChange(of: naming?.id) { name = naming?.title ?? "" }
+        .alert(naming?.id == Naming.newSpace ? "New Space" : "Rename",
+               isPresented: Binding(get: { naming != nil }, set: { if !$0 { naming = nil } }),
+               presenting: naming) { item in
+            TextField("Name", text: $name)
+            Button(item.id == Naming.newSpace ? "Add" : "Rename") { save(item) }
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("Your computer makes the change when it syncs.")
+        }
+    }
+
+    private func save(_ item: Naming) {
+        let title = name.trimmingCharacters(in: .whitespaces)
+        if item.id == Naming.newSpace {
+            browser.change { sync in
+                await sync.newSpace(named: title)
+                // The new space is the last one: show it.
+                if let new = browser.spaces.last { browser.show(space: new) }
+            }
+        } else {
+            browser.change { await $0.rename(item.id, to: title) }
+        }
     }
 
     private func show(_ id: String) {
@@ -52,9 +85,20 @@ private struct SpaceTint: View {
     }
 }
 
-/// The spaces' icons, the one in front marked; a tap shows that space.
+/// Something being named: an item to rename, with its name so far, or a
+/// new space.
+private struct Naming: Identifiable {
+    static let newSpace = "new space"
+    let id: String
+    let title: String
+}
+
+/// The spaces' icons, the one in front marked; a tap shows that space. In a
+/// chain, "+" adds a space (`add`).
 private struct SpaceSwitcher: View {
     @Environment(Browser.self) private var browser
+    @Environment(Sync.self) private var sync
+    let add: () -> Void
 
     var body: some View {
         // Too many spaces for the width: they scroll, the one in front in view.
@@ -90,6 +134,15 @@ private struct SpaceSwitcher: View {
                 .accessibilityAddTraits(front ? .isSelected : [])
                 .id(space.id)
             }
+            if sync.joined {
+                Button("New Space", systemImage: "plus", action: add)
+                    .labelStyle(.iconOnly)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 40, height: 36)
+                    .contentShape(.capsule)
+                    .buttonStyle(.plain)
+            }
         }
     }
 }
@@ -102,8 +155,12 @@ private struct SpacePage: View {
     let space: Space
     let dismissable: Bool
     @Binding var folded: Set<String>
+    @Binding var naming: Naming?
     let settings: () -> Void
     let join: () -> Void
+
+    /// Items can be changed: the sidebar is a chain's.
+    private var editable: Bool { sync.joined }
 
     var body: some View {
         let open = browser.tabs(in: space)
@@ -135,11 +192,22 @@ private struct SpacePage: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            SpaceIcon(space: space, size: 26)
-            Text(space.title)
-                .font(.title.weight(.bold))
-                .lineLimit(1)
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: 10) {
+                SpaceIcon(space: space, size: 26)
+                Text(space.title)
+                    .font(.title.weight(.bold))
+                    .lineLimit(1)
+                    .accessibilityAddTraits(.isHeader)
+                if space.pending { Waiting() }
+            }
+            .contextMenu {
+                // The private space keeps its name, as on the desktop.
+                if editable && !space.ephemeral {
+                    Button("Rename Space…", systemImage: "pencil") {
+                        naming = Naming(id: space.id, title: space.title)
+                    }
+                }
+            }
             Spacer(minLength: 0)
             Button("Settings", systemImage: "gearshape", action: settings)
                 .labelStyle(.iconOnly)
@@ -167,6 +235,9 @@ private struct SpacePage: View {
                 } label: {
                     VStack(spacing: 7) {
                         SiteMark(title: page.title, url: page.url, size: 58)
+                            .overlay(alignment: .topTrailing) {
+                                if page.pending { Waiting().offset(x: 6, y: -6) }
+                            }
                         Text(page.title.isEmpty ? site(page.url) : page.title)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -175,6 +246,14 @@ private struct SpacePage: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
+                .contextMenu {
+                    if editable {
+                        renameButton(page.id, page.title)
+                        Button("Remove from Favorites", systemImage: "star.slash", role: .destructive) {
+                            browser.change { await $0.remove(page.id) }
+                        }
+                    }
+                }
             }
         }
     }
@@ -184,12 +263,23 @@ private struct SpacePage: View {
             ForEach(visible(space.pinned), id: \.item) { row in
                 Group {
                     switch row.item {
-                    case let .folder(id, title, smart):
-                        FolderRow(title: title, smart: smart, open: !folded.contains(id)) {
+                    case let .folder(id, title, smart, pending):
+                        FolderRow(title: title, smart: smart, open: !folded.contains(id), pending: pending) {
                             withAnimation(.smooth(duration: 0.25)) { folded.formSymmetricDifference([id]) }
                         }
+                        .contextMenu {
+                            if editable { renameButton(id, title) }
+                        }
                     case let .page(page):
-                        PageRow(title: page.title, url: page.url) { browser.open(page) }
+                        PageRow(title: page.title, url: page.url, pending: page.pending) { browser.open(page) }
+                            .contextMenu {
+                                if editable {
+                                    renameButton(page.id, page.title)
+                                    Button("Unpin", systemImage: "pin.slash", role: .destructive) {
+                                        browser.change { await $0.remove(page.id) }
+                                    }
+                                }
+                            }
                     }
                 }
                 .padding(.leading, CGFloat(min(row.depth, 6)) * 20)
@@ -205,9 +295,13 @@ private struct SpacePage: View {
                 if row.depth > depth { return false }
                 shut = nil
             }
-            if case let .folder(id, _, _) = row.item, folded.contains(id) { shut = row.depth }
+            if case let .folder(id, _, _, _) = row.item, folded.contains(id) { shut = row.depth }
             return true
         }
+    }
+
+    private func renameButton(_ id: String, _ title: String) -> some View {
+        Button("Rename…", systemImage: "pencil") { naming = Naming(id: id, title: title) }
     }
 
     private func here(_ tabs: [Tab]) -> some View {
@@ -311,11 +405,13 @@ private func site(_ url: String) -> String {
 }
 
 /// A page in a list: its mark, title and site; with `close`, a button to
-/// close it. `marked`: the tab on screen.
+/// close it. `marked`: the tab on screen; `pending`: a change no desktop
+/// made yet.
 private struct PageRow: View {
     let title: String
     let url: String
     var marked = false
+    var pending = false
     let open: () -> Void
     var close: (() -> Void)?
 
@@ -325,9 +421,12 @@ private struct PageRow: View {
                 HStack(spacing: 12) {
                     SiteMark(title: title, url: url, size: 32)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(title.isEmpty ? site(url) : title)
-                            .lineLimit(1)
-                            .fontWeight(marked ? .semibold : .regular)
+                        HStack(spacing: 6) {
+                            Text(title.isEmpty ? site(url) : title)
+                                .lineLimit(1)
+                                .fontWeight(marked ? .semibold : .regular)
+                            if pending { Waiting() }
+                        }
                         Text(site(url))
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -359,6 +458,7 @@ private struct FolderRow: View {
     let title: String
     let smart: Bool
     let open: Bool
+    var pending = false
     let toggle: () -> Void
 
     var body: some View {
@@ -368,7 +468,10 @@ private struct FolderRow: View {
                     .foregroundStyle(.tint)
                     .frame(width: 32)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(title).lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(title).lineLimit(1)
+                        if pending { Waiting() }
+                    }
                     if smart {
                         Text("Fills itself on the desktop")
                             .font(.caption)
@@ -387,6 +490,18 @@ private struct FolderRow: View {
         }
         .buttonStyle(.plain)
         .padding(.vertical, 8)
+    }
+}
+
+/// The mark of a change made here that no desktop of the chain made yet.
+private struct Waiting: View {
+    var body: some View {
+        Image(systemName: "arrow.triangle.2.circlepath")
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(3)
+            .background(.background, in: .circle)
+            .accessibilityLabel("Waiting for your computer")
     }
 }
 
