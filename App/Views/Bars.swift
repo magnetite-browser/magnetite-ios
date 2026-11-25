@@ -20,6 +20,8 @@ struct PhoneBar: View {
     @State private var keyboardTop: CGFloat?
     /// Where the bar ends while it rests at the bottom, in the window.
     @State private var restingBottom: CGFloat = 0
+    /// The window's top edge that content keeps clear of (the status bar).
+    @State private var topInset: CGFloat = 0
 
     /// The height the bar keeps clear at the page's bottom edge.
     static let height: CGFloat = 60
@@ -27,13 +29,22 @@ struct PhoneBar: View {
     private var small: Bool { page?.reading == true && !editing }
 
     var body: some View {
-        ZStack {
-            if small, let page {
-                SiteLabel(page: page)
-                    .transition(.blurReplace)
-            } else {
-                full
-                    .transition(.blurReplace)
+        VStack(spacing: 8) {
+            // While typing: what the text could mean, just above the field.
+            if editing {
+                SuggestionList(text: text, maxHeight: room) {
+                    editing = false
+                    text = ""
+                }
+            }
+            ZStack {
+                if small, let page {
+                    SiteLabel(page: page)
+                        .transition(.blurReplace)
+                } else {
+                    full
+                        .transition(.blurReplace)
+                }
             }
         }
         .animation(.smooth(duration: 0.3), value: small)
@@ -63,6 +74,7 @@ struct PhoneBar: View {
             else { return }
             let top = window.convert(end, from: window.screen.coordinateSpace).minY
             keyboardTop = top < window.bounds.maxY ? top : nil
+            topInset = window.safeAreaInsets.top
             page?.watchFind { keyboardTop = nil }
         }
     }
@@ -78,6 +90,11 @@ struct PhoneBar: View {
     /// How far the bar moves up to sit on the keyboard.
     private var lift: CGFloat {
         keyboardTop.map { max(0, restingBottom - $0) } ?? 0
+    }
+
+    /// The height between the status bar and the bar on the keyboard.
+    private var room: CGFloat {
+        max(120, restingBottom - lift - Self.height - topInset - 12)
     }
 
     private var full: some View {
@@ -174,6 +191,18 @@ struct TopBar: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(.bar)
+        // While typing: what the text could mean, over the page below.
+        .overlay(alignment: .top) {
+            if editing {
+                SuggestionList(text: text, maxHeight: 420) {
+                    editing = false
+                    text = ""
+                }
+                .frame(maxWidth: 560)
+                .offset(y: 62)
+            }
+        }
+        .zIndex(1)
         .background { HardwareKeys(page: page, editing: $editing, newTab: newTab) }
         // A page picked in the sidebar while typing ends the typing; New Tab
         // (no page in front) keeps it.
@@ -232,7 +261,11 @@ struct AddressField: View {
             if let page, !typing, page.loading {
                 Button("Stop", systemImage: "xmark") { page.view.stopLoading() }
             } else if editing.wrappedValue, !text.isEmpty {
-                Button("Clear", systemImage: "xmark.circle.fill") { text = "" }
+                Button("Clear", systemImage: "xmark.circle.fill") {
+                    text = ""
+                    // The tap may take the keyboard from the field.
+                    editing.wrappedValue = true
+                }
                     .foregroundStyle(.secondary)
             }
         }
@@ -412,12 +445,14 @@ private struct BarButtonStyle: ButtonStyle {
 }
 
 /// Glass on iOS 26 and later, a material with a soft shadow before.
+/// `interactive` glass answers a touch (buttons), the other does not (panels).
 private struct Glass<S: Shape>: ViewModifier {
     let shape: S
+    let interactive: Bool
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.interactive(), in: shape)
+            content.glassEffect(.regular.interactive(interactive), in: shape)
         } else {
             content
                 .background(.regularMaterial, in: shape)
@@ -428,8 +463,8 @@ private struct Glass<S: Shape>: ViewModifier {
 }
 
 extension View {
-    func glass(in shape: some Shape) -> some View {
-        modifier(Glass(shape: shape))
+    func glass(in shape: some Shape, interactive: Bool = true) -> some View {
+        modifier(Glass(shape: shape, interactive: interactive))
     }
 }
 

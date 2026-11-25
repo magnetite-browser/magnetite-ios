@@ -28,7 +28,11 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Scans the QR code of your sync code. Nothing the camera sees is kept or sent.</string>
+	<string>Scans the QR code of your sync code, and lets a website you allow use the camera. Magnetite keeps and sends nothing of it.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lets a website you allow know where you are, for a map for example. Magnetite keeps and sends nothing of it.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Lets a website you allow use the microphone, for a call for example. Magnetite keeps and sends nothing of it.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

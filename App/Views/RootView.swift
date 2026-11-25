@@ -107,18 +107,3 @@ private struct PageView: View {
             }
     }
 }
-
-extension Space {
-    /// The space's colour, for buttons and marks; none: the app's own.
-    var tint: Color? {
-        accent.map { Color(red: Double($0.red), green: Double($0.green), blue: Double($0.blue)) }
-    }
-
-    /// The icon when it is an emoji. The desktop's named icons are not
-    /// drawn here.
-    var emoji: String? {
-        guard let icon, icon.unicodeScalars.contains(where: { $0.properties.isEmojiPresentation || $0.value > 0x238C })
-        else { return nil }
-        return icon
-    }
-}

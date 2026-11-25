@@ -37,7 +37,7 @@ final class Browser {
     @ObservationIgnored private var memoryWarning: NSObjectProtocol?
 
     /// The space of a device that is in no chain.
-    static let home = Space(id: "home", title: "Home", icon: nil, accent: nil, profileId: "home",
+    static let home = Space(id: "home", title: "Home", icon: "home", accent: nil, profileId: "home",
                             ephemeral: false, favorites: [], pinned: [], today: [])
 
     private struct Saved: Codable {
@@ -76,14 +76,18 @@ final class Browser {
         save()
     }
 
-    /// After the sidebar changed: tabs of a space that is gone move to the
-    /// first one, and the space in front is one that exists.
+    /// After the sidebar changed: tabs of a space that is gone, open or
+    /// sent, move to the first one, and the space in front is one that
+    /// exists.
     func settle() {
         let known = Set(spaces.map(\.id))
         let first = spaces[0].id
         for i in tabs.indices where !known.contains(tabs[i].space) {
             tabs[i].space = first
             pages[tabs[i].id] = nil
+        }
+        for i in sent.indices where !known.contains(sent[i].space) {
+            sent[i].space = first
         }
         if !known.contains(spaceID) { spaceID = first }
         if frontTab == nil { front = nil }
@@ -93,10 +97,11 @@ final class Browser {
     // MARK: Tabs
 
     /// Open `url` in a new tab of the space in front and show it.
-    func open(_ url: URL, origin: String? = nil) {
+    /// With `inBackground`, the tab opens behind the one in front.
+    func open(_ url: URL, origin: String? = nil, inBackground: Bool = false) {
         let tab = Tab(space: space.id, url: url, origin: origin)
         tabs.insert(tab, at: 0)
-        front = tab.id
+        if !inBackground { front = tab.id }
         save()
     }
 
@@ -111,7 +116,11 @@ final class Browser {
 
     /// Go to what the address field holds: in the tab in front, else a new one.
     func go(_ text: String) {
-        guard let url = Address.url(for: text) else { return }
+        Address.url(for: text).map(load)
+    }
+
+    /// Load `url` in the tab in front, else in a new one.
+    func load(_ url: URL) {
         if let tab = frontTab {
             page(for: tab).view.load(URLRequest(url: url))
         } else {
@@ -143,6 +152,14 @@ final class Browser {
     }
 
     // MARK: Other devices
+
+    /// Hand `url` to the desktop without opening it here, as a tab of
+    /// `space`: the space of the page it came from, not the one in front.
+    func sendToDesktop(_ url: URL, from space: Space) {
+        sent.insert(Tab(space: space.id, url: url), at: 0)
+        save()
+        Task { await shareTabs() }
+    }
 
     /// Hand `tab` to the desktop: it closes here and waits in `sent` until a
     /// desktop opened it.
@@ -211,7 +228,11 @@ final class Browser {
         let page = WebPage(url: tab.url, store: store(for: space))
         let id = tab.id
         page.changed = { [weak self] url, title in self?.note(id, url: url, title: title) }
-        page.opensTab = { [weak self] url in self?.open(url) }
+        page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground) }
+        page.sendsToDesktop = { [weak self] url in
+            guard let self, sync.joined else { return nil }
+            return { self.sendToDesktop(url, from: space) }
+        }
         pages[id] = page
         return page
     }
