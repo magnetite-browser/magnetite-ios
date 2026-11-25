@@ -41,7 +41,8 @@ extension Browser {
             rows.append(search)
         }
 
-        let tabs = tabs
+        // Private tabs only while in the private space, and only there.
+        let tabs = tabs.filter { isPrivate($0) == (space.id == Self.privateSpace.id) }
             .compactMap { tab in Self.match(query, title: tab.title, url: tab.url.absoluteString).map { (tab, $0) } }
             .sorted { $0.1 > $1.1 }
             .prefix(3)

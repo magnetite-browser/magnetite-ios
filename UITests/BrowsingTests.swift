@@ -138,6 +138,28 @@ final class BrowsingTests: XCTestCase {
         XCTAssertTrue(app.buttons["doc.rust-lang.org"].waitForExistence(timeout: 30))
     }
 
+    /// A page in the private space is not in History, and its tab is gone
+    /// once the app ended.
+    func testAPrivateTabLeavesNoTrace() {
+        app.buttons["Private"].tap()
+        XCTAssertTrue(app.staticTexts["Private tabs"].waitForExistence(timeout: 5))
+        let token = String(UUID().uuidString.prefix(8))
+        app.textFields["Search or enter address"].tap()
+        app.typeText("\(server)/demo/ads#\(token)\n")
+        XCTAssertTrue(app.webViews.staticTexts["Content blocking"].waitForExistence(timeout: 30))
+
+        menu("History")
+        app.searchFields.firstMatch.tap()
+        app.typeText(token)
+        XCTAssertFalse(app.collectionViews.staticTexts["Content blocking"].waitForExistence(timeout: 3))
+
+        app.terminate()
+        app.launch()
+        app.buttons["Private"].tap()
+        XCTAssertTrue(app.staticTexts["Private tabs"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No tabs open in this space. Type an address below, or pick a page above."].exists)
+    }
+
     private func menu(_ item: String) {
         app.buttons["More"].tap()
         app.collectionViews.buttons[item].tap()

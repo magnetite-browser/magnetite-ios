@@ -41,6 +41,8 @@ struct SpaceIcon: View {
         "camera": "camera", "flask": "flask", "leaf": "leaf", "flame": "flame", "chat": "message",
         "wrench": "wrench.adjustable", "compass": "location.north.circle", "folder": "folder",
         "plane": "airplane", "gamepad": "gamecontroller", "shield": "shield", "medical": "cross.case",
+        // The phone's private space (the desktop draws a mask for its own).
+        "mask": "theatermasks",
         "github": "arrow.triangle.branch", "diamond": "diamond", "circle": "circle", "square": "square",
         "triangle": "triangle",
     ]

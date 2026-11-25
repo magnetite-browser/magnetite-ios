@@ -181,7 +181,11 @@ private struct SpacePage: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 26) {
                 header
-                if !sync.joined { invitation }
+                if space.id == Browser.privateSpace.id {
+                    privateNote
+                } else if !sync.joined {
+                    invitation
+                }
                 if !space.favorites.isEmpty { favorites }
                 if !space.pinned.isEmpty { pinned }
                 here(open)
@@ -370,6 +374,20 @@ private struct SpacePage: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
         }
+    }
+
+    /// What the private space is, at its top.
+    private var privateNote: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Private tabs", systemImage: "theatermasks")
+                .font(.headline)
+            Text("Pages opened here leave no history, and their cookies and logins are gone when Magnetite quits. Private tabs are not shown on your other devices, and not kept when the app ends.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 22))
     }
 
     private var invitation: some View {
