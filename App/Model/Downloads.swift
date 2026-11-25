@@ -5,12 +5,16 @@ import WebKit
 /// The files pages download. They go to Downloads in the app's documents,
 /// which the Files app shows under the app's name; the list of them is kept
 /// in `downloads.json`, without the addresses they came from (as on the
-/// desktop). A running download shows in a card over the page (`recent`).
+/// desktop), and without those of private spaces, which the list shows only
+/// while the app runs. A running download shows in a card over the page
+/// (`recent`).
 @MainActor @Observable
 final class Downloads: NSObject {
     private struct Source {
         weak var view: WKWebView?
         let url: URL?
+        /// Kept in the list for the next start: not a private space's.
+        let listed: Bool
     }
 
     struct Item: Identifiable, Codable, Equatable {
@@ -40,6 +44,8 @@ final class Downloads: NSObject {
     @ObservationIgnored private var sources: [Item.ID: Source] = [:]
     @ObservationIgnored private var starting: [ObjectIdentifier: Source] = [:]
     @ObservationIgnored private var watching: [Item.ID: NSKeyValueObservation] = [:]
+    /// Downloads of private spaces: not written to `downloads.json`.
+    @ObservationIgnored private var unlisted: Set<Item.ID> = []
     @ObservationIgnored private var hiding: Task<Void, Never>?
 
     static let folder = URL.documentsDirectory.appending(path: "Downloads")
@@ -69,10 +75,11 @@ final class Downloads: NSObject {
 
     // MARK: WebKit
 
-    /// A page's navigation became `download`.
-    func adopt(_ download: WKDownload, from view: WKWebView) {
+    /// A page's navigation became `download`; `listed`: kept in the list
+    /// for the next start (not for a private space's page).
+    func adopt(_ download: WKDownload, from view: WKWebView, listed: Bool) {
         download.delegate = self
-        starting[ObjectIdentifier(download)] = Source(view: view, url: download.originalRequest?.url)
+        starting[ObjectIdentifier(download)] = Source(view: view, url: download.originalRequest?.url, listed: listed)
     }
 
     // MARK: Actions
@@ -84,9 +91,9 @@ final class Downloads: NSObject {
 
     /// Start a failed or canceled download again, from the beginning.
     func retry(_ item: Item) {
-        guard let view = sources[item.id]?.view, let url = sources[item.id]?.url else { return }
+        guard let source = sources[item.id], let view = source.view, let url = source.url else { return }
         remove(item, deleting: true)
-        Task { adopt(await view.startDownload(using: URLRequest(url: url)), from: view) }
+        Task { adopt(await view.startDownload(using: URLRequest(url: url)), from: view, listed: source.listed) }
     }
 
     /// Take `item` off the list; with `deleting`, its file goes too.
@@ -113,6 +120,7 @@ final class Downloads: NSObject {
         sources[id] = nil
         watching[id] = nil
         progress[id] = nil
+        unlisted.remove(id)
         if recent == id { recent = nil }
     }
 
@@ -133,7 +141,7 @@ final class Downloads: NSObject {
     }
 
     private func save() {
-        guard let data = try? JSONEncoder().encode(items) else { return }
+        guard let data = try? JSONEncoder().encode(items.filter { !unlisted.contains($0.id) }) else { return }
         try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
         try? data.write(to: Self.file, options: .atomic)
     }
@@ -169,7 +177,9 @@ extension Downloads: WKDownloadDelegate {
         items.insert(item, at: 0)
         running[ObjectIdentifier(download)] = item.id
         tasks[item.id] = download
-        sources[item.id] = starting.removeValue(forKey: ObjectIdentifier(download))
+        let source = starting.removeValue(forKey: ObjectIdentifier(download))
+        sources[item.id] = source
+        if source?.listed == false { unlisted.insert(item.id) }
         recent = item.id
         hiding?.cancel()
         watching[item.id] = download.progress.observe(\.fractionCompleted) { [weak self] progress, _ in

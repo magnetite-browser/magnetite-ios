@@ -68,8 +68,9 @@ struct SidebarView: View {
         if item.id == Naming.newSpace {
             browser.change { sync in
                 await sync.newSpace(named: title)
-                // The new space is the last one: show it.
-                if let new = browser.spaces.last { browser.show(space: new) }
+                // The new space is the chain's last one (the private space
+                // comes after it): show it.
+                if let new = sync.sidebar?.spaces.last { browser.show(space: new) }
             }
         } else {
             browser.change { await $0.rename(item.id, to: title) }

@@ -116,7 +116,10 @@ final class Browser {
     func open(_ url: URL, origin: String? = nil, inBackground: Bool = false, in space: Space? = nil) {
         let tab = Tab(space: (space ?? self.space).id, url: url, origin: origin)
         tabs.insert(tab, at: 0)
-        if !inBackground { front = tab.id }
+        if !inBackground {
+            front = tab.id
+            spaceID = tab.space
+        }
         save()
     }
 
@@ -252,7 +255,10 @@ final class Browser {
         let page = WebPage(url: tab.url, store: store(for: space), blocker: blocker, downloads: downloads)
         let id = tab.id
         page.changed = { [weak self] url, title in self?.note(id, url: url, title: title) }
-        page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground) }
+        // In the page's own space, whatever space is in front: a private
+        // page's links stay private.
+        page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground, in: space) }
+        page.leavesTrace = !space.ephemeral
         page.closes = { [weak self] in
             if let self, let tab = tabs.first(where: { $0.id == id }) { close(tab) }
         }

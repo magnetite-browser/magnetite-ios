@@ -40,6 +40,9 @@ final class WebPage: NSObject {
     /// Called when the tab was opened only for a download, which it handed
     /// on: the empty tab goes.
     @ObservationIgnored var closes: (() -> Void)?
+    /// What the page downloads is listed for the next start too; not for a
+    /// private space's page.
+    @ObservationIgnored var leavesTrace = true
     @ObservationIgnored private var watching: [NSKeyValueObservation] = []
     /// Gives the page its content rules (`use`).
     @ObservationIgnored private weak var blocker: ContentBlocker?
@@ -252,7 +255,7 @@ extension WebPage: WKNavigationDelegate {
     }
 
     private func handOn(_ download: WKDownload) {
-        downloads?.adopt(download, from: view)
+        downloads?.adopt(download, from: view, listed: leavesTrace)
         // No new page: the one in view keeps its rules.
         use(blocker?.rules(for: view.url))
         // A tab that never showed a page was opened for the download.
