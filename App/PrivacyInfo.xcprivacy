@@ -22,7 +22,8 @@
 				<string>CA92.1</string>
 			</array>
 		</dict>
-		<!-- Reading the app's own files (the sidebar last read, site icons). -->
+		<!-- Reading the app's own files (the sidebar last read, site icons, how
+		     old the downloaded filter lists are). -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>

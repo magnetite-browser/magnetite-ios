@@ -24,6 +24,7 @@ struct SettingsView: View {
                     }
                 }
                 syncSection
+                BlockingSection()
                 historySection
                 Section {
                     Button("Clear Website Data…", role: .destructive) { clearing = true }

@@ -85,4 +85,30 @@ final class BrowsingTests: XCTestCase {
         let row = app.buttons.containing(.staticText, identifier: "iana.org · History").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5))
     }
+
+    /// The demo server's page has an image EasyList blocks. Blocked once the
+    /// lists are in use (they come with the first web page); loaded on a
+    /// site that the page's menu lets load everything.
+    func testAnAdIsBlockedUnlessTheSiteIsAllowed() {
+        // Typed: a link from another app reaches the app only with https.
+        app.textFields["Search or enter address"].tap()
+        app.typeText("\(server)/demo/ads\n")
+        XCTAssertTrue(app.webViews.staticTexts["Content blocking"].waitForExistence(timeout: 30))
+        let blocked = app.webViews.staticTexts["The ad was blocked"]
+        // A first start downloads and compiles the lists meanwhile.
+        for _ in 0..<12 where !blocked.waitForExistence(timeout: 10) {
+            menu("Reload")
+        }
+        XCTAssertTrue(blocked.exists)
+
+        menu("Block Ads")
+        XCTAssertTrue(app.webViews.staticTexts["The ad loaded"].waitForExistence(timeout: 10))
+        menu("Block Ads")
+        XCTAssertTrue(blocked.waitForExistence(timeout: 10))
+    }
+
+    private func menu(_ item: String) {
+        app.buttons["More"].tap()
+        app.collectionViews.buttons[item].tap()
+    }
 }

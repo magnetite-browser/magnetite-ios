@@ -43,6 +43,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         AppDelegate.browser.syncIfDue()
+        AppDelegate.browser.blocker.refreshIfDue()
     }
 
     /// The tabs as they are when the app is put away, and the history.
