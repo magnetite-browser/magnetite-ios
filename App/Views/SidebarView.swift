@@ -15,7 +15,7 @@ struct SidebarView: View {
     var dismissable = false
 
     @State private var settingsShown = false
-    @State private var historyShown = false
+    @State private var library: Library?
     @State private var joinShown = false
     /// Folders folded shut, by id, in every space. Open is the usual state.
     @State private var folded: Set<String> = []
@@ -27,7 +27,7 @@ struct SidebarView: View {
         TabView(selection: Binding(get: { browser.space.id }, set: show)) {
             ForEach(browser.spaces, id: \.id) { space in
                 SpacePage(space: space, dismissable: dismissable, folded: $folded, naming: $naming,
-                          settings: { settingsShown = true }, history: { historyShown = true },
+                          settings: { settingsShown = true }, show: { library = $0 },
                           join: { joinShown = true })
                     .tag(space.id)
             }
@@ -40,7 +40,7 @@ struct SidebarView: View {
             }
         }
         .sheet(isPresented: $settingsShown) { SettingsView() }
-        .sheet(isPresented: $historyShown) { HistoryView() }
+        .sheet(item: $library) { $0.view }
         .sheet(isPresented: $joinShown) { JoinView() }
         // A page came to the front (a link from another app): on a wide
         // screen the sidebar stays, so its sheets go, not to hide the page.
@@ -168,7 +168,7 @@ private struct SpacePage: View {
     @Binding var folded: Set<String>
     @Binding var naming: Naming?
     let settings: () -> Void
-    let history: () -> Void
+    let show: (Library) -> Void
     let join: () -> Void
 
     /// Items can be changed: the sidebar is a chain's.
@@ -222,7 +222,15 @@ private struct SpacePage: View {
                 }
             }
             Spacer(minLength: 0)
-            Button("History", systemImage: "clock", action: history)
+            if !browser.downloads.items.isEmpty {
+                Button("Downloads", systemImage: "arrow.down.circle") { show(.downloads) }
+                    .labelStyle(.iconOnly)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 40, height: 40)
+                    .glass(in: Circle())
+            }
+            Button("History", systemImage: "clock") { show(.history) }
                 .labelStyle(.iconOnly)
                 .font(.body.weight(.medium))
                 .foregroundStyle(.secondary)

@@ -22,7 +22,7 @@ struct PhoneBar: View {
     @State private var restingBottom: CGFloat = 0
     /// The window's top edge that content keeps clear of (the status bar).
     @State private var topInset: CGFloat = 0
-    @State private var historyShown = false
+    @State private var library: Library?
 
     /// The height the bar keeps clear at the page's bottom edge.
     static let height: CGFloat = 60
@@ -57,8 +57,8 @@ struct PhoneBar: View {
         // in place, so that the address field can take the keyboard.
         .opacity(aside ? 0 : 1)
         .allowsHitTesting(!aside)
-        .background { HardwareKeys(page: page, editing: $editing, newTab: newTab) { historyShown = true } }
-        .sheet(isPresented: $historyShown) { HistoryView() }
+        .background { HardwareKeys(page: page, editing: $editing, newTab: newTab) { library = $0 } }
+        .sheet(item: $library) { $0.view }
         // A page picked while typing ends the typing.
         .onChange(of: browser.front) { _, now in
             if now != nil { editing = false }
@@ -110,7 +110,7 @@ struct PhoneBar: View {
                 if editing {
                     RoundButton("Cancel", systemImage: "xmark") { editing = false }
                 } else if let page {
-                    PageMenu(page: page, newTab: newTab) { historyShown = true }
+                    PageMenu(page: page, newTab: newTab) { library = $0 }
                     TabsButton { sidebarShown = true }
                 }
             }
@@ -172,7 +172,7 @@ struct TopBar: View {
 
     @State private var text = ""
     @FocusState private var editing: Bool
-    @State private var historyShown = false
+    @State private var library: Library?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -188,7 +188,7 @@ struct TopBar: View {
                 .frame(maxWidth: 640)
                 .frame(maxWidth: .infinity)
             if let page {
-                PageMenu(page: page, newTab: newTab) { historyShown = true }
+                PageMenu(page: page, newTab: newTab) { library = $0 }
             }
         }
         .padding(.horizontal, 10)
@@ -205,9 +205,19 @@ struct TopBar: View {
                 .offset(y: 62)
             }
         }
+        // The download that runs, over the page's top right.
+        .overlay(alignment: .topTrailing) {
+            if !editing {
+                DownloadCard { library = .downloads }
+                    .frame(maxWidth: 320)
+                    .padding(.trailing, 10)
+                    .offset(y: 62)
+            }
+        }
+        .animation(.smooth(duration: 0.3), value: browser.downloads.recent)
         .zIndex(1)
-        .background { HardwareKeys(page: page, editing: $editing, newTab: newTab) { historyShown = true } }
-        .sheet(isPresented: $historyShown) { HistoryView() }
+        .background { HardwareKeys(page: page, editing: $editing, newTab: newTab) { library = $0 } }
+        .sheet(item: $library) { $0.view }
         // A page picked in the sidebar while typing ends the typing; New Tab
         // (no page in front) keeps it.
         .onChange(of: browser.front) { _, now in
@@ -324,12 +334,13 @@ struct AddressField: View {
 }
 
 /// What can be done with the page in front. `newTab` goes to the start
-/// page and starts typing an address; `history` shows the history.
+/// page and starts typing an address; `show` opens the history or the
+/// downloads.
 struct PageMenu: View {
     @Environment(Browser.self) private var browser
     @Bindable var page: WebPage
     let newTab: () -> Void
-    let history: () -> Void
+    let show: (Library) -> Void
 
     var body: some View {
         Menu {
@@ -389,7 +400,10 @@ struct PageMenu: View {
                 }
             }
             Section {
-                Button("History", systemImage: "clock", action: history)
+                Button("History", systemImage: "clock") { show(.history) }
+                if !browser.downloads.items.isEmpty {
+                    Button("Downloads", systemImage: "arrow.down.circle") { show(.downloads) }
+                }
                 Button("New Tab", systemImage: "plus", action: newTab)
                 if let tab = browser.frontTab {
                     Button("Close Tab", systemImage: "xmark", role: .destructive) { browser.close(tab) }
@@ -410,7 +424,7 @@ private struct HardwareKeys: View {
     let page: WebPage?
     var editing: FocusState<Bool>.Binding
     let newTab: () -> Void
-    let history: () -> Void
+    let show: (Library) -> Void
 
     var body: some View {
         Group {
@@ -418,8 +432,10 @@ private struct HardwareKeys: View {
                 .keyboardShortcut("l", modifiers: .command)
             Button("New Tab", action: newTab)
                 .keyboardShortcut("t", modifiers: .command)
-            Button("History", action: history)
+            Button("History") { show(.history) }
                 .keyboardShortcut("y", modifiers: .command)
+            Button("Downloads") { show(.downloads) }
+                .keyboardShortcut("l", modifiers: [.command, .option])
             if let tab = browser.frontTab {
                 Button("Close Tab") { browser.close(tab) }
                     .keyboardShortcut("w", modifiers: .command)

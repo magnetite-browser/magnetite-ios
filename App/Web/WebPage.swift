@@ -37,13 +37,18 @@ final class WebPage: NSObject {
     @ObservationIgnored var opensTab: ((URL, Bool) -> Void)?
     /// How a link can go to the desktop; `nil`: it cannot (no chain).
     @ObservationIgnored var sendsToDesktop: ((URL) -> (() -> Void)?)?
+    /// Called when the tab was opened only for a download, which it handed
+    /// on: the empty tab goes.
+    @ObservationIgnored var closes: (() -> Void)?
     @ObservationIgnored private var watching: [NSKeyValueObservation] = []
     /// Gives the page its content rules (`use`).
     @ObservationIgnored private weak var blocker: ContentBlocker?
+    /// Takes the files the page downloads.
+    @ObservationIgnored private weak var downloads: Downloads?
     /// The content rules in use.
     @ObservationIgnored private var rules: WKContentRuleList?
 
-    init(url: URL, store: WKWebsiteDataStore, blocker: ContentBlocker) {
+    init(url: URL, store: WKWebsiteDataStore, blocker: ContentBlocker, downloads: Downloads) {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = store
         config.allowsInlineMediaPlayback = true
@@ -66,6 +71,7 @@ final class WebPage: NSObject {
         watch()
         self.url = url
         self.blocker = blocker
+        self.downloads = downloads
         // Not before the rules kept from the last start are there: a page
         // restored at start is blocked from its first request.
         blocker.whenReady { [weak self] in
@@ -210,6 +216,8 @@ extension WebPage: WKNavigationDelegate {
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  preferences: WKWebpagePreferences) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
         preferences.preferredContentMode = desktopSite ? .desktop : .mobile
+        // A link with `download`.
+        if action.shouldPerformDownload { return (.download, preferences) }
         guard let url = action.request.url, let scheme = url.scheme?.lowercased() else { return (.allow, preferences) }
         // The rules of the site the page goes to (none where it is allowed),
         // for a page that loads in this view: not a link to a new window
@@ -224,6 +232,31 @@ extension WebPage: WKNavigationDelegate {
             await UIApplication.shared.open(url)
         }
         return (.cancel, preferences)
+    }
+
+    /// What the web view cannot show, or what the site sends as an
+    /// attachment, is downloaded.
+    func webView(_ webView: WKWebView,
+                 decidePolicyFor response: WKNavigationResponse) async -> WKNavigationResponsePolicy {
+        let disposition = (response.response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Disposition")
+        let attachment = disposition?.lowercased().hasPrefix("attachment") ?? false
+        return response.isForMainFrame && (attachment || !response.canShowMIMEType) ? .download : .allow
+    }
+
+    func webView(_ webView: WKWebView, navigationAction: WKNavigationAction, didBecome download: WKDownload) {
+        handOn(download)
+    }
+
+    func webView(_ webView: WKWebView, navigationResponse: WKNavigationResponse, didBecome download: WKDownload) {
+        handOn(download)
+    }
+
+    private func handOn(_ download: WKDownload) {
+        downloads?.adopt(download, from: view)
+        // No new page: the one in view keeps its rules.
+        use(blocker?.rules(for: view.url))
+        // A tab that never showed a page was opened for the download.
+        if view.backForwardList.currentItem == nil { closes?() }
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
