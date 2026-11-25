@@ -350,6 +350,15 @@ struct PageMenu: View {
                         .disabled(page.zoom >= 3)
                 }
                 Toggle("Desktop Site", systemImage: "desktopcomputer", isOn: $page.desktopSite)
+                if browser.blocker.enabled, let url = page.url, ["http", "https"].contains(url.scheme ?? "") {
+                    // For the whole site, in every tab; the page loads again.
+                    Toggle("Block Ads", systemImage: "shield", isOn: Binding(
+                        get: { !browser.blocker.isAllowed(url) },
+                        set: { block in
+                            browser.blocker.allow(Address.site(of: url), !block)
+                            page.reload()
+                        }))
+                }
             }
             if let url = page.url, ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
                let tab = browser.frontTab, browser.sync.joined, browser.sync.sidebar != nil,

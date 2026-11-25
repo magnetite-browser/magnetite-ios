@@ -38,8 +38,12 @@ final class WebPage: NSObject {
     /// How a link can go to the desktop; `nil`: it cannot (no chain).
     @ObservationIgnored var sendsToDesktop: ((URL) -> (() -> Void)?)?
     @ObservationIgnored private var watching: [NSKeyValueObservation] = []
+    /// Gives the page its content rules (`use`).
+    @ObservationIgnored private weak var blocker: ContentBlocker?
+    /// The content rules in use.
+    @ObservationIgnored private var rules: WKContentRuleList?
 
-    init(url: URL, store: WKWebsiteDataStore) {
+    init(url: URL, store: WKWebsiteDataStore, blocker: ContentBlocker) {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = store
         config.allowsInlineMediaPlayback = true
@@ -61,7 +65,24 @@ final class WebPage: NSObject {
         view.scrollView.refreshControl = pull
         watch()
         self.url = url
-        view.load(URLRequest(url: url))
+        self.blocker = blocker
+        // Not before the rules kept from the last start are there: a page
+        // restored at start is blocked from its first request.
+        blocker.whenReady { [weak self] in
+            guard let self else { return }
+            blocker.serve(self)
+            use(blocker.rules(for: url))
+            view.load(URLRequest(url: url))
+        }
+    }
+
+    /// Block with `rules` from now on; `nil`: block nothing.
+    func use(_ rules: WKContentRuleList?) {
+        guard rules !== self.rules else { return }
+        let controller = view.configuration.userContentController
+        controller.removeAllContentRuleLists()
+        if let rules { controller.add(rules) }
+        self.rules = rules
     }
 
     func reload() {
@@ -190,6 +211,10 @@ extension WebPage: WKNavigationDelegate {
                  preferences: WKWebpagePreferences) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
         preferences.preferredContentMode = desktopSite ? .desktop : .mobile
         guard let url = action.request.url, let scheme = url.scheme?.lowercased() else { return (.allow, preferences) }
+        if ["http", "https"].contains(scheme), action.targetFrame?.isMainFrame ?? true {
+            // The rules of the site the page goes to: none where it is allowed.
+            use(blocker?.rules(for: url))
+        }
         if ["http", "https", "about", "blob", "data"].contains(scheme) { return (.allow, preferences) }
         // Mail, phone, app links: the system's business, and only when the
         // page itself goes there, not one of its frames.

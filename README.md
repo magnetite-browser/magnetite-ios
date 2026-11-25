@@ -37,6 +37,9 @@ xcodebuild -project Magnetite.xcodeproj -scheme Magnetite \
 `EditingTests` at a demo server on another port
 (`DEMO_PORT=8788 cargo run --example demo_server`). `EditingTests` changes
 the demo chain; start the server again before the other tests.
+`BrowsingTests.testAnAdIsBlockedUnlessTheSiteIsAllowed` downloads the filter
+lists from their publishers, so it needs the internet, as the tests that
+open Wikipedia do.
 
 To try it by hand, join `http://localhost:8787` ("Your own server") with the
 words the demo server prints. `curl -X POST localhost:8787/demo/take` plays a
@@ -59,8 +62,10 @@ What the App Store page says is in [docs/app-store.md](docs/app-store.md);
 
 - `App/Model`: the tabs of this device (`Browser`), the sync chain (`Sync`),
   the pages visited here (`BrowsingHistory`, kept by the core, never
-  synced, nothing from private spaces), what the address field's text
-  means (`Address`) and offers while typing (`Suggestions`).
+  synced, nothing from private spaces), content blocking
+  (`ContentBlocker`: the desktop's filter lists, compiled by WebKit into
+  one rule list), what the address field's text means (`Address`) and
+  offers while typing (`Suggestions`).
 - `App/Model/Favicons.swift`: site icons, kept when a page of the site was
   loaded here; a row never contacts a site.
 - `App/Web`: one tab's web view and its state.
