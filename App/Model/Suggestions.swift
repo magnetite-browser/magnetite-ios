@@ -8,7 +8,8 @@ enum Suggestion: Identifiable {
     case search(URL)
     /// A tab open here: show it.
     case tab(Tab)
-    /// A favorite, pinned or Today page of the chain: open it in its space.
+    /// A favorite, pinned, Today or bookmarked page of the chain: open it in
+    /// its space.
     case page(Page, in: Space)
     /// A page visited before (`BrowsingHistory`): go there.
     case visit(Visit)
@@ -50,10 +51,13 @@ extension Browser {
         var seen = Set(tabs.map { $0.0.url.absoluteString })
         var pages: [(Page, Space, Int)] = []
         for space in spaces {
-            let pinned = space.pinned.compactMap { row -> Page? in
-                if case let .page(page) = row.item { page } else { nil }
+            let listed = { (rows: [Row]) in
+                rows.compactMap { row -> Page? in
+                    if case let .page(page) = row.item { page } else { nil }
+                }
             }
-            for page in space.favorites + pinned + space.today where !seen.contains(page.url) {
+            for page in space.favorites + listed(space.pinned) + space.today + listed(space.bookmarks)
+                where !seen.contains(page.url) {
                 guard let score = Self.match(query, title: page.title, url: page.url) else { continue }
                 seen.insert(page.url)
                 pages.append((page, space, score))

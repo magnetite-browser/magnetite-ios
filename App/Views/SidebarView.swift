@@ -222,20 +222,20 @@ private struct SpacePage: View {
                 }
             }
             Spacer(minLength: 0)
-            if !browser.downloads.items.isEmpty {
-                Button("Downloads", systemImage: "arrow.down.circle") { show(.downloads) }
-                    .labelStyle(.iconOnly)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 40, height: 40)
-                    .glass(in: Circle())
+            // Bookmarks, history and downloads, as the desktop's library
+            // button has them.
+            Menu {
+                ForEach(Library.allCases) { place in
+                    Button(place.title, systemImage: place.symbol) { show(place) }
+                }
+            } label: {
+                Label("Library", systemImage: "books.vertical")
             }
-            Button("History", systemImage: "clock") { show(.history) }
-                .labelStyle(.iconOnly)
-                .font(.body.weight(.medium))
-                .foregroundStyle(.secondary)
-                .frame(width: 40, height: 40)
-                .glass(in: Circle())
+            .labelStyle(.iconOnly)
+            .font(.body.weight(.medium))
+            .foregroundStyle(.secondary)
+            .frame(width: 40, height: 40)
+            .glass(in: Circle())
             Button("Settings", systemImage: "gearshape", action: settings)
                 .labelStyle(.iconOnly)
                 .font(.body.weight(.medium))

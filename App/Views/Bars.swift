@@ -400,9 +400,10 @@ struct PageMenu: View {
                 }
             }
             Section {
-                Button("History", systemImage: "clock") { show(.history) }
-                if !browser.downloads.items.isEmpty {
-                    Button("Downloads", systemImage: "arrow.down.circle") { show(.downloads) }
+                ControlGroup {
+                    ForEach(Library.allCases) { place in
+                        Button(place.title, systemImage: place.symbol) { show(place) }
+                    }
                 }
                 Button("New Tab", systemImage: "plus", action: newTab)
                 if let tab = browser.frontTab {

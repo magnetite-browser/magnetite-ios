@@ -71,7 +71,8 @@ What the App Store page says is in [docs/app-store.md](docs/app-store.md);
   loaded here; a row never contacts a site.
 - `App/Web`: one tab's web view and its state.
 - `App/Views`: the page with its bar, the sidebar (a page per space, swiped
-  through as on the desktop), joining (by typing the 24 words or by
+  through as on the desktop), the library (bookmarks of all spaces,
+  history, downloads), joining (by typing the 24 words or by
   scanning the QR code a computer shows beside them), settings. On a wide
   screen (iPad) the sidebar is a column beside the page; on a narrow one it
   is the start page and a sheet.

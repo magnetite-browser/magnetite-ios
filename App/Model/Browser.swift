@@ -99,10 +99,10 @@ final class Browser {
 
     // MARK: Tabs
 
-    /// Open `url` in a new tab of the space in front and show it.
+    /// Open `url` in a new tab of `space` (the one in front) and show it.
     /// With `inBackground`, the tab opens behind the one in front.
-    func open(_ url: URL, origin: String? = nil, inBackground: Bool = false) {
-        let tab = Tab(space: space.id, url: url, origin: origin)
+    func open(_ url: URL, origin: String? = nil, inBackground: Bool = false, in space: Space? = nil) {
+        let tab = Tab(space: (space ?? self.space).id, url: url, origin: origin)
         tabs.insert(tab, at: 0)
         if !inBackground { front = tab.id }
         save()
