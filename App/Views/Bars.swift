@@ -372,7 +372,7 @@ struct PageMenu: View {
                 }
             }
             if let url = page.url, ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
-               let tab = browser.frontTab, browser.sync.joined, browser.sync.sidebar != nil,
+               let tab = browser.frontTab, browser.sync.joined, browser.sync.sidebar != nil, !browser.isPrivate(tab),
                let space = browser.spaces.first(where: { $0.id == tab.space }) {
                 // A desktop of the chain makes these (`Sync`).
                 Section {
@@ -393,7 +393,7 @@ struct PageMenu: View {
                     ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
                     Button("Copy Link", systemImage: "link") { UIPasteboard.general.url = url }
                 }
-                if let tab = browser.frontTab, browser.sync.joined {
+                if let tab = browser.frontTab, browser.sync.joined, !browser.isPrivate(tab) {
                     Button("Send to Desktop", systemImage: "laptopcomputer.and.arrow.down") {
                         browser.sendToDesktop(tab)
                     }
@@ -406,6 +406,10 @@ struct PageMenu: View {
                     }
                 }
                 Button("New Tab", systemImage: "plus", action: newTab)
+                Button("New Private Tab", systemImage: "theatermasks") {
+                    browser.show(space: Browser.privateSpace)
+                    newTab()
+                }
                 if let tab = browser.frontTab {
                     Button("Close Tab", systemImage: "xmark", role: .destructive) { browser.close(tab) }
                 }
@@ -433,6 +437,11 @@ private struct HardwareKeys: View {
                 .keyboardShortcut("l", modifiers: .command)
             Button("New Tab", action: newTab)
                 .keyboardShortcut("t", modifiers: .command)
+            Button("New Private Tab") {
+                browser.show(space: Browser.privateSpace)
+                newTab()
+            }
+            .keyboardShortcut("n", modifiers: [.command, .shift])
             Button("History") { show(.history) }
                 .keyboardShortcut("y", modifiers: .command)
             Button("Downloads") { show(.downloads) }

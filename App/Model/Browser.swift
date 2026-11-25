@@ -43,6 +43,15 @@ final class Browser {
     static let home = Space(id: "home", title: "Home", icon: "home", accent: nil, profileId: "home",
                             ephemeral: false, favorites: [], pinned: [], today: [], bookmarks: [], pending: false)
 
+    /// This phone's private space, after the others, as the desktop has one:
+    /// its pages keep no history, their cookies and logins go when the app
+    /// ends, its tabs are neither listed for other devices nor kept for the
+    /// next start. It is not the chain's: nothing in it syncs.
+    static let privateSpace = Space(id: "phone-private", title: String(localized: "Private"), icon: "mask",
+                                    accent: Accent(red: 0.62, green: 0.62, blue: 0.68), profileId: "phone-private",
+                                    ephemeral: true, favorites: [], pinned: [], today: [], bookmarks: [],
+                                    pending: false)
+
     private struct Saved: Codable {
         var tabs: [Tab]
         var front: Tab.ID?
@@ -68,7 +77,10 @@ final class Browser {
 
     // MARK: Spaces
 
-    var spaces: [Space] { sync.sidebar?.spaces ?? [Self.home] }
+    var spaces: [Space] { (sync.sidebar?.spaces ?? [Self.home]) + [Self.privateSpace] }
+
+    /// Whether `tab` is in this phone's private space.
+    func isPrivate(_ tab: Tab) -> Bool { tab.space == Self.privateSpace.id }
     var space: Space { spaces.first { $0.id == spaceID } ?? spaces[0] }
     var frontTab: Tab? { tabs.first { $0.id == front } }
 
@@ -104,7 +116,10 @@ final class Browser {
     func open(_ url: URL, origin: String? = nil, inBackground: Bool = false, in space: Space? = nil) {
         let tab = Tab(space: (space ?? self.space).id, url: url, origin: origin)
         tabs.insert(tab, at: 0)
-        if !inBackground { front = tab.id }
+        if !inBackground {
+            front = tab.id
+            spaceID = tab.space
+        }
         save()
     }
 
@@ -223,7 +238,7 @@ final class Browser {
     private func listed(sentOnly: Bool = false) -> [DeviceTab] {
         let known = Dictionary(uniqueKeysWithValues: (sync.sidebar?.spaces ?? []).map { ($0.id, $0) })
         func entry(_ tab: Tab, later: Bool) -> DeviceTab? {
-            if known[tab.space]?.ephemeral == true { return nil }
+            if isPrivate(tab) || known[tab.space]?.ephemeral == true { return nil }
             return DeviceTab(id: tab.id.uuidString, url: tab.url.absoluteString, title: tab.title,
                              space: known[tab.space]?.id, later: later)
         }
@@ -240,12 +255,15 @@ final class Browser {
         let page = WebPage(url: tab.url, store: store(for: space), blocker: blocker, downloads: downloads)
         let id = tab.id
         page.changed = { [weak self] url, title in self?.note(id, url: url, title: title) }
-        page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground) }
+        // In the page's own space, whatever space is in front: a private
+        // page's links stay private.
+        page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground, in: space) }
+        page.leavesTrace = !space.ephemeral
         page.closes = { [weak self] in
             if let self, let tab = tabs.first(where: { $0.id == id }) { close(tab) }
         }
         page.sendsToDesktop = { [weak self] url in
-            guard let self, sync.joined else { return nil }
+            guard let self, sync.joined, !isPrivate(tab) else { return nil }
             return { self.sendToDesktop(url, from: space) }
         }
         // Private spaces leave no history, as on the desktop.
@@ -302,7 +320,10 @@ final class Browser {
     }
 
     private func save() {
-        let saved = Saved(tabs: tabs, front: front, space: spaceID, sent: sent)
+        // Private tabs are not kept for the next start.
+        let kept = tabs.filter { !isPrivate($0) }
+        let saved = Saved(tabs: kept, front: kept.contains { $0.id == front } ? front : nil,
+                          space: spaceID == Self.privateSpace.id ? spaces[0].id : spaceID, sent: sent)
         guard let data = try? JSONEncoder().encode(saved) else { return }
         try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
         try? data.write(to: Self.file, options: .atomic)

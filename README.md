@@ -60,7 +60,8 @@ What the App Store page says is in [docs/app-store.md](docs/app-store.md);
 
 ## Layout
 
-- `App/Model`: the tabs of this device (`Browser`), the sync chain (`Sync`),
+- `App/Model`: the tabs of this device (`Browser`, with a private space of
+  the phone's own whose tabs leave nothing behind), the sync chain (`Sync`),
   the pages visited here (`BrowsingHistory`, kept by the core, never
   synced, nothing from private spaces), content blocking
   (`ContentBlocker`: the desktop's filter lists, compiled by WebKit into
