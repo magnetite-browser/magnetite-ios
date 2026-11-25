@@ -39,7 +39,7 @@ final class Browser {
 
     /// The space of a device that is in no chain.
     static let home = Space(id: "home", title: "Home", icon: "home", accent: nil, profileId: "home",
-                            ephemeral: false, favorites: [], pinned: [], today: [], pending: false)
+                            ephemeral: false, favorites: [], pinned: [], today: [], bookmarks: [], pending: false)
 
     private struct Saved: Codable {
         var tabs: [Tab]
