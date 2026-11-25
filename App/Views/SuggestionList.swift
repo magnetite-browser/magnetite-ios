@@ -34,6 +34,7 @@ struct SuggestionList: View {
     private func pick(_ row: Suggestion) {
         switch row {
         case let .address(url), let .search(url): browser.load(url)
+        case let .visit(visit): visit.page.map(browser.load)
         case let .tab(tab): browser.show(tab)
         case let .page(page, space):
             browser.show(space: space)
@@ -58,6 +59,9 @@ struct SuggestionList: View {
                 SiteMark(title: page.title, url: page.url, size: 30)
                 let site = URL(string: page.url).map(Address.site(of:)) ?? page.url
                 lines(page.title.isEmpty ? site : page.title, "\(site) · \(space.title)")
+            case let .visit(visit):
+                SiteMark(title: visit.title, url: visit.url, size: 30)
+                lines(visit.label, "\(visit.page.map(Address.site(of:)) ?? visit.url) · \(String(localized: "History"))")
             }
             Spacer(minLength: 0)
         }

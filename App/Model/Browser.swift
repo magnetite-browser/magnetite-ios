@@ -23,6 +23,7 @@ struct Tab: Identifiable, Codable, Equatable {
 @MainActor @Observable
 final class Browser {
     let sync = Sync()
+    let history = BrowsingHistory()
     private(set) var tabs: [Tab] = []
     /// Tabs sent to the desktop that no desktop has opened yet.
     private(set) var sent: [Tab] = []
@@ -241,6 +242,11 @@ final class Browser {
         page.sendsToDesktop = { [weak self] url in
             guard let self, sync.joined else { return nil }
             return { self.sendToDesktop(url, from: space) }
+        }
+        // Private spaces leave no history, as on the desktop.
+        if !space.ephemeral {
+            page.visited = { [history] in history.visit($0, title: $1) }
+            page.named = { [history] in history.name($0, title: $1) }
         }
         pages[id] = page
         return page
