@@ -1,11 +1,13 @@
 import XCTest
 
 /// Typing an address and following links, on a phone. Needs the demo sync
-/// server of magnetite-mobile-core (see `JoinAndBrowseTests`); joins its
-/// chain unless the app already did.
+/// server of magnetite-mobile-core (see `JoinAndBrowseTests`; another port
+/// with `TEST_RUNNER_DEMO_SERVER=http://localhost:…`); joins its chain
+/// unless the app already did.
 final class BrowsingTests: XCTestCase {
     /// The demo chain's sync code (32 zero bytes).
     private let words = Array(repeating: "abandon", count: 23).joined(separator: " ") + " art"
+    private let server = ProcessInfo.processInfo.environment["DEMO_SERVER"] ?? "http://localhost:8787"
     private var app: XCUIApplication!
 
     override func setUpWithError() throws {
@@ -18,7 +20,7 @@ final class BrowsingTests: XCTestCase {
             app.buttons["Your own server"].tap()
             let address = app.textFields["https://sync.example.org"]
             address.tap()
-            address.typeText("http://localhost:8787")
+            address.typeText(server)
             let code = app.textFields["24 words"]
             code.tap()
             code.typeText(words)
@@ -64,5 +66,23 @@ final class BrowsingTests: XCTestCase {
     func testALinkFromAnotherAppOpensAsATab() {
         app.open(URL(string: "https://example.org/")!)
         XCTAssertTrue(app.buttons["example.org"].waitForExistence(timeout: 30))
+    }
+
+    /// A page visited shows in History and, once its tab is closed, is
+    /// offered while typing.
+    func testAVisitedPageIsInHistoryAndOffered() {
+        app.open(URL(string: "https://www.iana.org/help/example-domains")!)
+        XCTAssertTrue(app.buttons["iana.org"].waitForExistence(timeout: 30))
+        app.buttons["More"].tap()
+        app.collectionViews.buttons["History"].tap()
+        XCTAssertTrue(app.staticTexts["Example Domains"].waitForExistence(timeout: 10))
+        app.buttons["Done"].tap()
+        app.buttons["More"].tap()
+        app.collectionViews.buttons["Close Tab"].tap()
+
+        app.textFields["Search or enter address"].tap()
+        app.typeText("iana")
+        let row = app.buttons.containing(.staticText, identifier: "iana.org · History").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
     }
 }

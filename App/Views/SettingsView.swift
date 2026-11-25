@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var joinShown = false
     @State private var leaving = false
     @State private var clearing = false
+    @State private var historyShown = false
 
     var body: some View {
         NavigationStack {
@@ -23,6 +24,7 @@ struct SettingsView: View {
                     }
                 }
                 syncSection
+                historySection
                 Section {
                     Button("Clear Website Data…", role: .destructive) { clearing = true }
                 } footer: {
@@ -41,6 +43,7 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $joinShown) { JoinView() }
+            .sheet(isPresented: $historyShown) { HistoryView() }
             .confirmationDialog("Leave the sync chain on this device?", isPresented: $leaving, titleVisibility: .visible) {
                 Button("Leave", role: .destructive) { sync.leave() }
             } message: {
@@ -53,6 +56,33 @@ struct SettingsView: View {
             } message: {
                 Text("You are signed out of the sites you use here.")
             }
+        }
+    }
+
+    private var historySection: some View {
+        Section {
+            Picker("Keep History", selection: Binding(get: { browser.history.keepDays },
+                                                      set: { browser.history.keep(days: $0) })) {
+                ForEach(BrowsingHistory.periods, id: \.self) { days in
+                    Text(Self.period(days)).tag(days)
+                }
+            }
+            Button("Show History") { historyShown = true }
+        } header: {
+            Text("History")
+        } footer: {
+            Text("The pages you visit stay on this device and are never synced. Pages of private spaces are not kept.")
+        }
+    }
+
+    private static func period(_ days: UInt32) -> LocalizedStringKey {
+        switch days {
+        case 0: "Don’t Keep"
+        case 7: "A Week"
+        case 30: "A Month"
+        case 90: "Three Months"
+        case 365: "A Year"
+        default: "\(days) Days"
         }
     }
 

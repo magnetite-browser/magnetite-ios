@@ -45,8 +45,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         AppDelegate.browser.syncIfDue()
     }
 
-    /// The tabs as they are when the app is put away.
+    /// The tabs as they are when the app is put away, and the history.
     func sceneDidEnterBackground(_ scene: UIScene) {
+        AppDelegate.browser.history.save()
         Task { await AppDelegate.browser.shareTabs() }
     }
 }

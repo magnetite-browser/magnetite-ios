@@ -10,6 +10,8 @@ enum Suggestion: Identifiable {
     case tab(Tab)
     /// A favorite, pinned or Today page of the chain: open it in its space.
     case page(Page, in: Space)
+    /// A page visited before (`BrowsingHistory`): go there.
+    case visit(Visit)
 
     var id: String {
         switch self {
@@ -17,14 +19,15 @@ enum Suggestion: Identifiable {
         case .search: "search"
         case let .tab(tab): "tab \(tab.id)"
         case let .page(page, space): "page \(space.id) \(page.id)"
+        case let .visit(visit): "visit \(visit.id)"
         }
     }
 }
 
 extension Browser {
     /// What to offer for `text`: the address it is or a search for it first
-    /// (the other one next), then the open tabs and the chain's pages that
-    /// match, best first. Nothing for an empty text.
+    /// (the other one next), then the open tabs, the chain's pages and the
+    /// pages visited that match, best first. Nothing for an empty text.
     func suggestions(for text: String) -> [Suggestion] {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return [] }
@@ -57,6 +60,8 @@ extension Browser {
             }
         }
         rows += pages.sorted { $0.2 > $1.2 }.prefix(6).map { .page($0.0, in: $0.1) }
+        let visits = history.suggestions(for: query, limit: 8).filter { !seen.contains($0.url) }
+        rows += visits.prefix(4).map(Suggestion.visit)
         return rows
     }
 

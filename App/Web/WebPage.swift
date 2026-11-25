@@ -27,6 +27,11 @@ final class WebPage: NSObject {
 
     /// Called when the address or title changed.
     @ObservationIgnored var changed: ((URL?, String) -> Void)?
+    /// Called when the page went to an address: a page loaded, or the page
+    /// changed its address itself. With the title it has then, if any.
+    @ObservationIgnored var visited: ((URL, String) -> Void)?
+    /// Called when the page named itself.
+    @ObservationIgnored var named: ((URL, String) -> Void)?
     /// Called when the page, or the reader, wants `url` in a new tab; `true`:
     /// behind the one in front.
     @ObservationIgnored var opensTab: ((URL, Bool) -> Void)?
@@ -126,11 +131,17 @@ final class WebPage: NSObject {
             })
         }
         on(\.url) { page, view in
-            if let url = view.url { page.url = url }
+            if let url = view.url {
+                page.url = url
+                // Outside a load: the page changed its address itself. A load
+                // counts once it commits.
+                if !view.isLoading { page.visited?(url, page.title) }
+            }
             page.changed?(page.url, page.title)
         }
         on(\.title) { page, view in
             page.title = view.title ?? ""
+            if let url = page.url { page.named?(url, page.title) }
             page.changed?(page.url, page.title)
         }
         on(\.estimatedProgress) { $0.progress = $1.estimatedProgress }
@@ -192,6 +203,8 @@ extension WebPage: WKNavigationDelegate {
         failure = nil
         // A new page starts with the whole bar.
         reading = false
+        // The title is still the last page's; the new one names itself later.
+        if let url = webView.url { visited?(url, "") }
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

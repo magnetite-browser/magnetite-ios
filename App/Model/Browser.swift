@@ -23,6 +23,7 @@ struct Tab: Identifiable, Codable, Equatable {
 @MainActor @Observable
 final class Browser {
     let sync = Sync()
+    let history = BrowsingHistory()
     private(set) var tabs: [Tab] = []
     /// Tabs sent to the desktop that no desktop has opened yet.
     private(set) var sent: [Tab] = []
@@ -38,7 +39,7 @@ final class Browser {
 
     /// The space of a device that is in no chain.
     static let home = Space(id: "home", title: "Home", icon: "home", accent: nil, profileId: "home",
-                            ephemeral: false, favorites: [], pinned: [], today: [], pending: false)
+                            ephemeral: false, favorites: [], pinned: [], today: [], bookmarks: [], pending: false)
 
     private struct Saved: Codable {
         var tabs: [Tab]
@@ -241,6 +242,11 @@ final class Browser {
         page.sendsToDesktop = { [weak self] url in
             guard let self, sync.joined else { return nil }
             return { self.sendToDesktop(url, from: space) }
+        }
+        // Private spaces leave no history, as on the desktop.
+        if !space.ephemeral {
+            page.visited = { [history] in history.visit($0, title: $1) }
+            page.named = { [history] in history.name($0, title: $1) }
         }
         pages[id] = page
         return page
