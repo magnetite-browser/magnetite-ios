@@ -346,7 +346,8 @@ struct PageMenu: View {
                 }
                 Toggle("Desktop Site", systemImage: "desktopcomputer", isOn: $page.desktopSite)
             }
-            if let url = page.url, let tab = browser.frontTab, browser.sync.joined,
+            if let url = page.url, ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+               let tab = browser.frontTab, browser.sync.joined, browser.sync.sidebar != nil,
                let space = browser.spaces.first(where: { $0.id == tab.space }) {
                 // A desktop of the chain makes these (`Sync`).
                 Section {

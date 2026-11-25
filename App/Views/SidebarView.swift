@@ -134,7 +134,7 @@ private struct SpaceSwitcher: View {
                 .accessibilityAddTraits(front ? .isSelected : [])
                 .id(space.id)
             }
-            if sync.joined {
+            if sync.joined, sync.sidebar != nil {
                 Button("New Space", systemImage: "plus", action: add)
                     .labelStyle(.iconOnly)
                     .font(.body.weight(.medium))
@@ -160,7 +160,9 @@ private struct SpacePage: View {
     let join: () -> Void
 
     /// Items can be changed: the sidebar is a chain's.
-    private var editable: Bool { sync.joined }
+    /// Items can be changed: the sidebar is a chain's, and one is here to
+    /// change (not before the first is read).
+    private var editable: Bool { sync.joined && sync.sidebar != nil }
 
     var body: some View {
         let open = browser.tabs(in: space)
@@ -201,8 +203,7 @@ private struct SpacePage: View {
                 if space.pending { Waiting() }
             }
             .contextMenu {
-                // The private space keeps its name, as on the desktop.
-                if editable && !space.ephemeral {
+                if editable {
                     Button("Rename Space…", systemImage: "pencil") {
                         naming = Naming(id: space.id, title: space.title)
                     }
