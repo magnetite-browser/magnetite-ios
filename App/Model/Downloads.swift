@@ -138,15 +138,21 @@ final class Downloads: NSObject {
         try? data.write(to: Self.file, options: .atomic)
     }
 
-    /// `name`, or "name (2).ext" and so on when the folder has that already.
-    private static func free(_ name: String) -> String {
+    /// `name`, or "name (2).ext" and so on when the folder has that already
+    /// or an entry of the list names it: entries find their file by name, so
+    /// a new file never takes the name of an old entry, even one whose file
+    /// is gone.
+    private func free(_ name: String) -> String {
+        let listed = Set(items.map(\.name))
+        let folder = Self.folder
         let clean = name.replacingOccurrences(of: "/", with: "_").trimmingCharacters(in: .whitespaces)
         let base = clean.isEmpty ? "Download" : clean
         let ext = (base as NSString).pathExtension
         let stem = (base as NSString).deletingPathExtension
         var candidate = base
         var n = 2
-        while FileManager.default.fileExists(atPath: folder.appending(path: candidate).path(percentEncoded: false)) {
+        while listed.contains(candidate)
+            || FileManager.default.fileExists(atPath: folder.appending(path: candidate).path(percentEncoded: false)) {
             candidate = ext.isEmpty ? "\(stem) (\(n))" : "\(stem) (\(n)).\(ext)"
             n += 1
         }
@@ -158,7 +164,7 @@ extension Downloads: WKDownloadDelegate {
     func download(_ download: WKDownload, decideDestinationUsing response: URLResponse,
                   suggestedFilename: String) async -> URL? {
         try? FileManager.default.createDirectory(at: Self.folder, withIntermediateDirectories: true)
-        let item = Item(name: Self.free(suggestedFilename),
+        let item = Item(name: free(suggestedFilename),
                         size: response.expectedContentLength > 0 ? response.expectedContentLength : nil)
         items.insert(item, at: 0)
         running[ObjectIdentifier(download)] = item.id

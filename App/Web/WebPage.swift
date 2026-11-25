@@ -253,6 +253,8 @@ extension WebPage: WKNavigationDelegate {
 
     private func handOn(_ download: WKDownload) {
         downloads?.adopt(download, from: view)
+        // No new page: the one in view keeps its rules.
+        use(blocker?.rules(for: view.url))
         // A tab that never showed a page was opened for the download.
         if view.backForwardList.currentItem == nil { closes?() }
     }
