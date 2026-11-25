@@ -80,7 +80,7 @@ struct SettingsView: View {
                 if let error = sync.lastError {
                     Text(error).foregroundStyle(.red)
                 } else {
-                    Text("This device reads the chain's sidebar and does not change it. Your other devices can list the tabs open here and take one over; tabs of private spaces are never listed.")
+                    Text("What you change in the sidebar here, your computer makes when it syncs. Your other devices can list the tabs open here and take one over; tabs of private spaces are never listed.")
                 }
             }
         } else {
