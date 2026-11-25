@@ -57,6 +57,23 @@ private struct SpaceSwitcher: View {
     @Environment(Browser.self) private var browser
 
     var body: some View {
+        // Too many spaces for the width: they scroll, the one in front in view.
+        ViewThatFits(in: .horizontal) {
+            row
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) { row }
+                    .onChange(of: browser.space.id, initial: true) { _, id in
+                        withAnimation(.smooth) { proxy.scrollTo(id, anchor: .center) }
+                    }
+            }
+        }
+        .padding(4)
+        .glass(in: Capsule())
+        .padding(.horizontal, 14)
+        .padding(.bottom, 6)
+    }
+
+    private var row: some View {
         HStack(spacing: 2) {
             ForEach(browser.spaces, id: \.id) { space in
                 let front = space.id == browser.space.id
@@ -71,11 +88,9 @@ private struct SpaceSwitcher: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(space.title)
                 .accessibilityAddTraits(front ? .isSelected : [])
+                .id(space.id)
             }
         }
-        .padding(4)
-        .glass(in: Capsule())
-        .padding(.bottom, 6)
     }
 }
 

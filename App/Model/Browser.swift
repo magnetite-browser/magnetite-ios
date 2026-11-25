@@ -76,14 +76,18 @@ final class Browser {
         save()
     }
 
-    /// After the sidebar changed: tabs of a space that is gone move to the
-    /// first one, and the space in front is one that exists.
+    /// After the sidebar changed: tabs of a space that is gone, open or
+    /// sent, move to the first one, and the space in front is one that
+    /// exists.
     func settle() {
         let known = Set(spaces.map(\.id))
         let first = spaces[0].id
         for i in tabs.indices where !known.contains(tabs[i].space) {
             tabs[i].space = first
             pages[tabs[i].id] = nil
+        }
+        for i in sent.indices where !known.contains(sent[i].space) {
+            sent[i].space = first
         }
         if !known.contains(spaceID) { spaceID = first }
         if frontTab == nil { front = nil }
@@ -149,8 +153,9 @@ final class Browser {
 
     // MARK: Other devices
 
-    /// Hand `url` to the desktop without opening it here.
-    func sendToDesktop(_ url: URL) {
+    /// Hand `url` to the desktop without opening it here, as a tab of
+    /// `space`: the space of the page it came from, not the one in front.
+    func sendToDesktop(_ url: URL, from space: Space) {
         sent.insert(Tab(space: space.id, url: url), at: 0)
         save()
         Task { await shareTabs() }
@@ -226,7 +231,7 @@ final class Browser {
         page.opensTab = { [weak self] url, inBackground in self?.open(url, inBackground: inBackground) }
         page.sendsToDesktop = { [weak self] url in
             guard let self, sync.joined else { return nil }
-            return { self.sendToDesktop(url) }
+            return { self.sendToDesktop(url, from: space) }
         }
         pages[id] = page
         return page

@@ -259,7 +259,10 @@ extension WebPage: WKUIDelegate {
     func webView(_ webView: WKWebView, contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
                  completionHandler: @escaping (UIContextMenuConfiguration?) -> Void) {
         guard let url = elementInfo.linkURL, ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
-            return completionHandler(nil)
+            // An image, a mail address: what WebKit offers for it.
+            return completionHandler(UIContextMenuConfiguration(identifier: nil, previewProvider: nil) {
+                UIMenu(children: $0)
+            })
         }
         let send = sendsToDesktop?(url) ?? nil
         completionHandler(UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] offered in
