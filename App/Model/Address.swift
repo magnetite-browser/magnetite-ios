@@ -18,9 +18,14 @@ enum Address {
         UserDefaults.standard.string(forKey: searchKey) ?? engines[0].template
     }
 
-    /// The page for `text`: the address when it is one (`example.org`,
-    /// `localhost:3000`, `https://…`), else a search for it.
+    /// The page for `text`: the address when it is one, else a search for it.
     static func url(for text: String, search template: String = searchTemplate) -> URL? {
+        address(in: text) ?? search(for: text, with: template)
+    }
+
+    /// `text` as an address, when it is one: `example.org`, `localhost:3000`,
+    /// `https://…`.
+    static func address(in text: String) -> URL? {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         if let url = URL(string: text), let scheme = url.scheme?.lowercased(),
@@ -32,8 +37,20 @@ enum Address {
             // Pages on this device rarely have https.
             return host == "localhost" ? URL(string: "http://" + text) : url
         }
+        return nil
+    }
+
+    /// A search for `text` with the engine of `template`.
+    static func search(for text: String, with template: String = searchTemplate) -> URL? {
+        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
         let words = text.addingPercentEncoding(withAllowedCharacters: .urlQueryValue) ?? ""
         return URL(string: template.replacingOccurrences(of: "%s", with: words))
+    }
+
+    /// The name of the search engine Settings has chosen.
+    static var searchEngine: String {
+        engines.first { $0.template == searchTemplate }?.label ?? engines[0].label
     }
 
     /// The site's name for a row or the address field: the host without `www.`.

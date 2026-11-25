@@ -27,8 +27,11 @@ final class WebPage: NSObject {
 
     /// Called when the address or title changed.
     @ObservationIgnored var changed: ((URL?, String) -> Void)?
-    /// Called when the page wants `url` in a new tab.
-    @ObservationIgnored var opensTab: ((URL) -> Void)?
+    /// Called when the page, or the reader, wants `url` in a new tab; `true`:
+    /// behind the one in front.
+    @ObservationIgnored var opensTab: ((URL, Bool) -> Void)?
+    /// How a link can go to the desktop; `nil`: it cannot (no chain).
+    @ObservationIgnored var sendsToDesktop: ((URL) -> (() -> Void)?)?
     @ObservationIgnored private var watching: [NSKeyValueObservation] = []
 
     init(url: URL, store: WKWebsiteDataStore) {
@@ -213,7 +216,7 @@ extension WebPage: WKUIDelegate {
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = action.request.url, ["http", "https"].contains(url.scheme?.lowercased() ?? "") {
-            opensTab?(url)
+            opensTab?(url, false)
         }
         return nil
     }
@@ -248,6 +251,40 @@ extension WebPage: WKUIDelegate {
             })
             show(alert) { done.resume(returning: nil) }
         }
+    }
+
+    /// Holding a link: open it in a new tab, behind, or on the desktop, then
+    /// what WebKit offers itself (copy, share…), without its reading list,
+    /// which is Safari's.
+    func webView(_ webView: WKWebView, contextMenuConfigurationForElement elementInfo: WKContextMenuElementInfo,
+                 completionHandler: @escaping (UIContextMenuConfiguration?) -> Void) {
+        guard let url = elementInfo.linkURL, ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            return completionHandler(nil)
+        }
+        let send = sendsToDesktop?(url) ?? nil
+        completionHandler(UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] offered in
+            var ours = [
+                UIAction(title: String(localized: "Open in New Tab"), image: UIImage(systemName: "plus.square.on.square")) { _ in
+                    self?.opensTab?(url, false)
+                },
+                UIAction(title: String(localized: "Open in Background"), image: UIImage(systemName: "square.on.square")) { _ in
+                    self?.opensTab?(url, true)
+                },
+            ]
+            if let send {
+                ours.append(UIAction(title: String(localized: "Send to Desktop"),
+                                     image: UIImage(systemName: "laptopcomputer.and.arrow.down")) { _ in send() })
+            }
+            let theirs = offered.filter { !(($0 as? UIAction)?.identifier.rawValue.contains("ReadingList") ?? false) }
+            return UIMenu(children: [UIMenu(options: .displayInline, children: ours)] + theirs)
+        })
+    }
+
+    /// A tap on the link's preview opens it here.
+    func webView(_ webView: WKWebView, contextMenuForElement elementInfo: WKContextMenuElementInfo,
+                 willCommitWithAnimator animator: UIContextMenuInteractionCommitAnimating) {
+        guard let url = elementInfo.linkURL else { return }
+        animator.addCompletion { webView.load(URLRequest(url: url)) }
     }
 
     /// The dialog says which site speaks, so a page cannot pass for the app.
