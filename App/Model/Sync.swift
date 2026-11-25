@@ -55,6 +55,7 @@ final class Sync {
     /// Forget the code and the sidebar here. The chain and the other devices
     /// stay as they are.
     func leave() {
+        generation += 1
         keychain.remove()
         UserDefaults.standard.removeObject(forKey: serverKey)
         forget(dir: dir)
@@ -68,11 +69,12 @@ final class Sync {
         guard let server, let secret = keychain.read(), !busy else { return }
         busy = true
         defer { busy = false }
-        let dir = dir
+        let (dir, session) = (dir, generation)
         do {
             let newer = try await Task.detached {
                 try MagnetiteCore.refresh(server: server, secret: secret, dir: dir)
             }.value
+            guard stillJoined(since: session) else { return }
             if let newer { sidebar = newer }
             lastError = nil
             lastSync = .now
@@ -143,11 +145,26 @@ final class Sync {
         await change { try MagnetiteCore.remove(dir: $0, item: item) }
     }
 
+    /// Goes up when the device leaves its chain: what a call started before
+    /// brings back belongs to the chain left.
+    @ObservationIgnored private var generation = 0
+
+    /// Whether the device is still in the chain it was in at `session`. If
+    /// it left meanwhile and is in none now, what the call wrote for the
+    /// chain left goes again.
+    private func stillJoined(since session: Int) -> Bool {
+        if session == generation { return true }
+        if !joined { forget(dir: dir) }
+        return false
+    }
+
     /// Keep a change for the desktop and show the sidebar with it.
     private func change(_ make: @escaping @Sendable (String) throws -> Sidebar?) async {
-        let dir = dir
+        let (dir, session) = (dir, generation)
         do {
-            if let shown = try await Task.detached(operation: { try make(dir) }).value { sidebar = shown }
+            let shown = try await Task.detached(operation: { try make(dir) }).value
+            guard stillJoined(since: session) else { return }
+            if let shown { sidebar = shown }
         } catch {
             lastError = Self.text(of: error)
         }
