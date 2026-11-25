@@ -3,12 +3,29 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// What the start page, the page's menu and the keys open in a sheet.
-enum Library: String, Identifiable {
-    case history, downloads
+enum Library: String, Identifiable, CaseIterable {
+    case bookmarks, history, downloads
     var id: Self { self }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .bookmarks: "Bookmarks"
+        case .history: "History"
+        case .downloads: "Downloads"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .bookmarks: "book"
+        case .history: "clock"
+        case .downloads: "arrow.down.circle"
+        }
+    }
 
     @ViewBuilder var view: some View {
         switch self {
+        case .bookmarks: BookmarksView()
         case .history: HistoryView()
         case .downloads: DownloadsView()
         }

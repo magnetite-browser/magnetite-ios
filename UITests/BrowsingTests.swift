@@ -125,6 +125,19 @@ final class BrowsingTests: XCTestCase {
         app.buttons["Done"].tap()
     }
 
+    /// The chain's bookmarks, from the start page's library: a folder opens,
+    /// and a bookmark opens as a tab.
+    func testABookmarkOpensAsATab() {
+        app.buttons["Library"].firstMatch.tap()
+        app.collectionViews.buttons["Bookmarks"].tap()
+        let folder = app.staticTexts["Docs"]
+        XCTAssertTrue(folder.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["The Rust Programming Language"].exists, "folders start closed")
+        folder.tap()
+        app.staticTexts["The Rust Programming Language"].tap()
+        XCTAssertTrue(app.buttons["doc.rust-lang.org"].waitForExistence(timeout: 30))
+    }
+
     private func menu(_ item: String) {
         app.buttons["More"].tap()
         app.collectionViews.buttons[item].tap()
