@@ -2,10 +2,11 @@
 
 The iPhone and iPad app of [Magnetite](https://github.com/magnetite-browser/magnetite).
 It browses with the system's web engine (WKWebView) and shows the spaces,
-favorites and pinned tabs of a sync chain. It never changes the chain's
+favorites and pinned tabs of a sync chain. It never writes the chain's
 sidebar. What it writes is its own entry among the chain's devices: the tabs
 open on it, which another device can take over ("Send to Desktop" asks for
-that).
+that), and its changes to the sidebar (pin, favorite, new space, rename,
+remove), which a desktop of the chain makes.
 
 ## Build
 
@@ -32,9 +33,14 @@ xcodebuild -project Magnetite.xcodeproj -scheme Magnetite \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
+`TEST_RUNNER_DEMO_SERVER=http://localhost:8788` points `EditingTests` at a
+demo server on another port (`DEMO_PORT=8788 cargo run --example demo_server`).
+
 To try it by hand, join `http://localhost:8787` ("Your own server") with the
 words the demo server prints. `curl -X POST localhost:8787/demo/take` plays a
-desktop that takes over the tabs the phone lists.
+desktop that takes over the tabs the phone lists, `…/demo/apply` one that
+makes the changes to the sidebar the phone asked for (pin, favorite, new
+space, rename, remove).
 
 ## Release
 

@@ -346,6 +346,23 @@ struct PageMenu: View {
                 }
                 Toggle("Desktop Site", systemImage: "desktopcomputer", isOn: $page.desktopSite)
             }
+            if let url = page.url, ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+               let tab = browser.frontTab, browser.sync.joined, browser.sync.sidebar != nil,
+               let space = browser.spaces.first(where: { $0.id == tab.space }) {
+                // A desktop of the chain makes these (`Sync`).
+                Section {
+                    if !space.pinned.contains(where: { $0.item.page?.url == url.absoluteString }) {
+                        Button("Pin in “\(space.title)”", systemImage: "pin") {
+                            browser.change { await $0.pin(url, title: page.title, in: space) }
+                        }
+                    }
+                    if !space.favorites.contains(where: { $0.url == url.absoluteString }) {
+                        Button("Add to Favorites", systemImage: "star") {
+                            browser.change { await $0.addFavorite(url, title: page.title, in: space) }
+                        }
+                    }
+                }
+            }
             Section {
                 if let url = page.url {
                     ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
