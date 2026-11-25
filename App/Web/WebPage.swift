@@ -211,8 +211,10 @@ extension WebPage: WKNavigationDelegate {
                  preferences: WKWebpagePreferences) async -> (WKNavigationActionPolicy, WKWebpagePreferences) {
         preferences.preferredContentMode = desktopSite ? .desktop : .mobile
         guard let url = action.request.url, let scheme = url.scheme?.lowercased() else { return (.allow, preferences) }
-        if ["http", "https"].contains(scheme), action.targetFrame?.isMainFrame ?? true {
-            // The rules of the site the page goes to: none where it is allowed.
+        // The rules of the site the page goes to (none where it is allowed),
+        // for a page that loads in this view: not a link to a new window
+        // (no target frame), which opens as a tab of its own.
+        if ["http", "https"].contains(scheme), action.targetFrame?.isMainFrame == true {
             use(blocker?.rules(for: url))
         }
         if ["http", "https", "about", "blob", "data"].contains(scheme) { return (.allow, preferences) }
@@ -237,6 +239,8 @@ extension WebPage: WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        // The page in view stays: so do its rules.
+        use(blocker?.rules(for: webView.url))
         let error = error as NSError
         // Stopped by the user, or handed to another app.
         let harmless = (error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled)
