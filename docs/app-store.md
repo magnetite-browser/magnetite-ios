@@ -35,9 +35,10 @@ spaces for the different parts of your day, favorites, and pinned tabs in
 folders. This is Magnetite for iPhone and iPad.
 
 THE PAGE FIRST
-The page fills the screen, with one floating bar at the bottom. It steps
-aside while you read and comes back with a tap. Find on page, text size and
-the desktop site are in the page's menu.
+On an iPhone the page fills the screen, with one floating bar at the bottom.
+It steps aside while you read and comes back with a tap. On an iPad the bar
+sits above the page, beside the sidebar. Find on page, text size and the
+desktop site are in the page's menu.
 
 SPACES, SWIPED THROUGH
 The start page is your sidebar: each space with its favorites, pinned tabs
@@ -92,5 +93,6 @@ None for the first version: the store asks for it from the second on.
 - **Sign-in:** none needed.
 - **Notes for review:** the app is a browser built on WebKit and works
   without an account. Sync is optional; a chain is made by Magnetite on a
-  computer, so the notes carry the 24 words of a demo chain on Magnetite's
-  server, to join from the start page or Settings → Join a Sync Chain.
+  computer, so the notes in App Store Connect carry the 24 words of a demo
+  chain on Magnetite's server (not written here: anyone could change that
+  chain), to join from the start page or Settings → Join a Sync Chain.

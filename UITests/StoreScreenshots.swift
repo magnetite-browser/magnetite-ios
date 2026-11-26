@@ -167,8 +167,10 @@ final class StoreScreenshots: XCTestCase {
         app.buttons.containing(.staticText, identifier: "rust-lang.org · Home").firstMatch
     }
 
-    /// Joins the demo chain: a fresh install shows the invitation.
+    /// Joins the demo chain, unless an earlier test in the run did: the
+    /// scripts start each from a fresh install, which shows the invitation.
     private func join() {
+        guard app.buttons["Join a Sync Chain"].waitForExistence(timeout: 3) else { return }
         app.buttons["Join a Sync Chain"].firstMatch.tap()
         app.buttons["Your own server"].tap()
         let field = app.textFields["https://sync.example.org"]

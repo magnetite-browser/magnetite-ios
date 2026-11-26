@@ -12,7 +12,9 @@ DEVICES=("$@")
 scripts/project.sh
 (cd "$CORE" && exec cargo run --quiet --example demo_server) > /dev/null &
 server=$!
-trap 'kill $server 2>/dev/null || true' EXIT
+test="" recorder=""
+# On any end, nothing is left running on the simulator.
+trap 'kill $server $test $recorder 2>/dev/null || true' EXIT
 until nc -z localhost 8787 2>/dev/null; do
   kill -0 $server 2>/dev/null || { echo "The demo server did not start" >&2; exit 1; }
   sleep 1
@@ -41,12 +43,13 @@ for device in "${DEVICES[@]}"; do
   sleep 1
   touch "$marks/recording"
   until [[ -e "$marks/done" ]]; do
-    kill -0 $test 2>/dev/null || { kill -INT $recorder; echo "The test ended early: $out.log" >&2; exit 1; }
+    kill -0 $test 2>/dev/null || { echo "The test ended early: $out.log" >&2; exit 1; }
     sleep 0.2
   done
   kill -INT $recorder
   wait $recorder || true
   wait $test
+  test="" recorder=""
   xcrun simctl status_bar "$device" clear
   rm -rf "$marks" "$out.log"
 
