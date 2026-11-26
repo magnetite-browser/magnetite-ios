@@ -27,7 +27,7 @@ for device in "${DEVICES[@]}"; do
     --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4
   xcodebuild -project Magnetite.xcodeproj -scheme Magnetite \
     -destination "platform=iOS Simulator,name=$device" -resultBundlePath "$out.xcresult" \
-    -only-testing:MagnetiteUITests/StoreScreenshots test > /dev/null
+    -only-testing:MagnetiteUITests/StoreScreenshots/testStoreScreenshots test > /dev/null
   xcrun simctl shutdown "$device"
   xcrun xcresulttool export attachments --path "$out.xcresult" --output-path "$out" > /dev/null
   # Name each picture as the test did.
