@@ -6,7 +6,7 @@ import SwiftUI
 /// The start page, and a sheet over a page.
 ///
 /// In a chain, holding an item renames or removes it, and "+" beside the
-/// spaces adds one. A desktop of the chain makes the change (`Sync`); until
+/// spaces adds one. The change is written into the chain (`Sync`); until
 /// then it shows with a mark that it waits.
 struct SidebarView: View {
     @Environment(Browser.self) private var browser
@@ -548,7 +548,7 @@ private struct Waiting: View {
             .foregroundStyle(.secondary)
             .padding(3)
             .background(.background, in: .circle)
-            .accessibilityLabel("Waiting for your computer")
+            .accessibilityLabel("Waiting to sync")
     }
 }
 

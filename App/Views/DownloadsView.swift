@@ -4,13 +4,14 @@ import UniformTypeIdentifiers
 
 /// What the start page, the page's menu and the keys open in a sheet.
 enum Library: String, Identifiable, CaseIterable {
-    case bookmarks, history, downloads
+    case bookmarks, history, archive, downloads
     var id: Self { self }
 
     var title: LocalizedStringKey {
         switch self {
         case .bookmarks: "Bookmarks"
         case .history: "History"
+        case .archive: "Archive"
         case .downloads: "Downloads"
         }
     }
@@ -19,6 +20,7 @@ enum Library: String, Identifiable, CaseIterable {
         switch self {
         case .bookmarks: "book"
         case .history: "clock"
+        case .archive: "archivebox"
         case .downloads: "arrow.down.circle"
         }
     }
@@ -27,6 +29,7 @@ enum Library: String, Identifiable, CaseIterable {
         switch self {
         case .bookmarks: BookmarksView()
         case .history: HistoryView()
+        case .archive: ArchiveView()
         case .downloads: DownloadsView()
         }
     }
