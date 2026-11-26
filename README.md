@@ -56,7 +56,8 @@ it shows up under TestFlight. `scripts/release.sh` is what it runs, and does
 the same from a Mac; it says at its top what it needs.
 
 What the App Store page says is in [docs/app-store.md](docs/app-store.md);
-`scripts/screenshots.sh` takes its pictures.
+`scripts/screenshots.sh` takes its pictures and `scripts/preview.sh` records
+its preview videos (with ffmpeg).
 
 ## Layout
 

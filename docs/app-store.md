@@ -11,8 +11,12 @@ Store Connect. Change it here first, then there.
 - **Price:** free, no in-app purchases
 - **Countries:** all but France, which asks for a declaration of the app's
   encryption first
-- **Pictures:** `scripts/screenshots.sh` takes them from the demo chain
-- **Keywords:** `browser,web,tabs,spaces,sync,privacy,open source,sidebar,favorites,pinned,private,encrypted`
+- **Pictures:** `scripts/screenshots.sh` takes them from the demo chain:
+  six for the 6.9" iPhone, four for the 13" iPad, in the order of their
+  names
+- **Preview videos:** `scripts/preview.sh` records them, one for each of
+  those two sizes
+- **Keywords:** `browser,spaces,sidebar,tabs,ad blocker,tracker,privacy,private,sync,encrypted,open source,bookmarks`
 - **Support URL:** https://magnetitebrowser.org
 - **Marketing URL:** https://magnetitebrowser.org
 - **Privacy policy URL:** https://magnetitebrowser.org/privacy/
@@ -20,41 +24,64 @@ Store Connect. Change it here first, then there.
 
 ### Promotional text
 
-The spaces, favorites and pinned tabs of Magnetite on your computer, on your
-iPhone and iPad. No account, no telemetry, open source.
+A browser with spaces, blocked ads and trackers, and private tabs. It joins
+the sync chain of Magnetite on your computer. No account, no telemetry, open
+source.
 
 ### Description
 
 Magnetite is an open-source browser with a sidebar instead of a tab strip:
 spaces for the different parts of your day, favorites, and pinned tabs in
-folders. This is its app for iPhone and iPad.
+folders. This is Magnetite for iPhone and iPad.
+
+THE PAGE FIRST
+On an iPhone the page fills the screen, with one floating bar at the bottom.
+It steps aside while you read and comes back with a tap. On an iPad the bar
+sits above the page, beside the sidebar. Find on page, text size and the
+desktop site are in the page's menu.
+
+SPACES, SWIPED THROUGH
+The start page is your sidebar: each space with its favorites, pinned tabs
+and the tabs open in it. Swipe from space to space, or pick one from the row
+of icons. On an iPad the sidebar stays beside the page, as on the desktop.
+
+ADS AND TRACKERS BLOCKED
+Magnetite blocks ads and trackers with the same filter lists as on the
+desktop, before they load. A site's menu turns blocking off for that site.
+
+HISTORY, BOOKMARKS, DOWNLOADS
+The pages you visit are offered while you type, and kept on this device only,
+for as long as you choose. The bookmarks of your spaces are a tap away, and
+downloads land in the Files app.
+
+PRIVATE TABS
+The private space leaves nothing behind: no history, and its cookies and
+logins are gone when Magnetite quits. Its tabs are never shown on your other
+devices.
 
 YOUR SIDEBAR, WITH YOU
 Join the sync chain of Magnetite on your computer and its spaces, favorites
-and pinned tabs are here too, each space in its colour. On an iPad the
-sidebar stays beside the page, as on the desktop.
-
-HAND A TAB OVER
-Your computer lists the tabs open on this device and can take one over.
-"Send to Desktop" asks for that from here.
+and pinned tabs are here too, each space in its colour. Pin a page, add a
+favorite or start a space here, and your computer makes the change when it
+syncs. Your computer lists the tabs open here and can take one over; "Send
+to Desktop" asks for that.
 
 SYNC THAT ONLY YOU CAN READ
 A sync chain is encrypted on your devices with a code of 24 words. The
 server stores what it cannot read. Use Magnetite's server, or one you host
-yourself. Joining is optional: without a chain, Magnetite is a plain, quiet
-browser.
+yourself. Sync is optional: without it, Magnetite is a plain, quiet browser.
 
 NOTHING BEHIND YOUR BACK
-No account. No telemetry. No advertising. The app contacts a site only when
-you open one of its pages. Tabs of private spaces are never listed for other
-devices.
+No account. No telemetry. No advertising. Besides the pages you open and the
+sync server you pick, the app contacts only the publishers of the filter
+lists it blocks with.
 
 OPEN SOURCE
 The code is public under the EUPL-1.2: https://github.com/magnetite-browser
 
-### What's new (first version)
+### What's new
 
-The first version of Magnetite for iPhone and iPad.
+None for the first version: the store asks for it from the second on.
 
 ## Answers in App Store Connect
 
@@ -66,5 +93,6 @@ The first version of Magnetite for iPhone and iPad.
 - **Sign-in:** none needed.
 - **Notes for review:** the app is a browser built on WebKit and works
   without an account. Sync is optional; a chain is made by Magnetite on a
-  computer, so the notes carry the address and the 24 words of a demo chain
-  to join under Settings → Join a Sync Chain.
+  computer, so the notes in App Store Connect carry the 24 words of a demo
+  chain on Magnetite's server (not written here: anyone could change that
+  chain), to join from the start page or Settings → Join a Sync Chain.
