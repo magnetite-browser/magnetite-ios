@@ -3,12 +3,14 @@ import Observation
 import UIKit
 
 /// This device's place in a sync chain. It reads the chain's sidebar and
-/// never writes to it (see the core's notes on why); its changes to the
-/// sidebar go to a desktop of the chain, which makes them, and show at once
-/// marked `pending` until then.
+/// archive. Its changes to them show at once, marked `pending`, and the core
+/// writes them into the chain with the next `exchange` (see the core's notes
+/// on how, and on when a desktop is asked to make them).
 @MainActor @Observable
 final class Sync {
     private(set) var sidebar: Sidebar?
+    /// The chain's closed tabs, newest first.
+    private(set) var archive: [Archived] = []
     private(set) var server: String?
     private(set) var busy = false
     private(set) var lastError: String?
@@ -32,6 +34,7 @@ final class Sync {
         }
         self.server = server
         sidebar = cached(dir: dir)
+        archive = cachedArchive(dir: dir)
     }
 
     /// Join the chain of the 24 `words` on `server`. The caller reads it next.
@@ -61,6 +64,7 @@ final class Sync {
         forget(dir: dir)
         server = nil
         sidebar = nil
+        archive = []
         lastError = nil
         lastSync = nil
     }
@@ -71,11 +75,13 @@ final class Sync {
         defer { busy = false }
         let (dir, session) = (dir, generation)
         do {
-            let newer = try await Task.detached {
-                try MagnetiteCore.refresh(server: server, secret: secret, dir: dir)
+            let (newer, closed) = try await Task.detached {
+                let newer = try MagnetiteCore.refresh(server: server, secret: secret, dir: dir)
+                return (newer, try MagnetiteCore.refreshArchive(server: server, secret: secret, dir: dir))
             }.value
             guard stillJoined(since: session) else { return }
             if let newer { sidebar = newer }
+            archive = closed
             lastError = nil
             lastSync = .now
         } catch {
@@ -102,16 +108,20 @@ final class Sync {
         return Device(id: id, name: UIDevice.current.name)
     }
 
-    /// Tell the chain which `tabs` are open here, and the changes to the
-    /// sidebar no desktop made yet. Returns the ids of the tabs another
-    /// device took over; none when it could not be asked.
+    /// Write the changes made here into the chain, and tell it which
+    /// `tabs` are open here. Returns the ids of the tabs another device took
+    /// over; none when it could not be asked.
     func exchange(_ tabs: [DeviceTab]) async -> [String] {
         guard let server, let secret = keychain.read() else { return [] }
-        let (device, dir) = (device, dir)
+        let (device, dir, session) = (device, dir, generation)
         do {
-            return try await Task.detached {
+            let taken = try await Task.detached {
                 try MagnetiteCore.exchange(server: server, secret: secret, device: device, tabs: tabs, dir: dir)
             }.value
+            guard stillJoined(since: session) else { return [] }
+            // What was written is no longer waiting.
+            show()
+            return taken
         } catch {
             lastError = Self.text(of: error)
             return []
@@ -140,9 +150,29 @@ final class Sync {
         await change { try MagnetiteCore.rename(dir: $0, item: item, title: title) }
     }
 
-    /// Unpin pinned page `item`, or remove favorite `item`.
+    /// Unpin pinned page `item`, or remove favorite `item`. It goes to the
+    /// archive.
     func remove(_ item: String) async {
         await change { try MagnetiteCore.remove(dir: $0, item: item) }
+    }
+
+    /// Bring archived tab `item` back as a Today tab of its space.
+    func restore(_ item: String) async {
+        await change { try MagnetiteCore.restore(dir: $0, item: item) }
+    }
+
+    /// Remove archived tab `item` from the archive for good.
+    func forgetArchived(_ item: String) async {
+        await change {
+            _ = try MagnetiteCore.forgetArchived(dir: $0, item: item)
+            return cached(dir: $0)
+        }
+    }
+
+    /// Show the sidebar and archive as the core keeps them now.
+    private func show() {
+        if let kept = cached(dir: dir) { sidebar = kept }
+        archive = cachedArchive(dir: dir)
     }
 
     /// Goes up when the device leaves its chain: what a call started before
@@ -158,13 +188,15 @@ final class Sync {
         return false
     }
 
-    /// Keep a change for the desktop and show the sidebar with it.
+    /// Keep a change until it is written and show the sidebar and archive
+    /// with it.
     private func change(_ make: @escaping @Sendable (String) throws -> Sidebar?) async {
         let (dir, session) = (dir, generation)
         do {
             let shown = try await Task.detached(operation: { try make(dir) }).value
             guard stillJoined(since: session) else { return }
             if let shown { sidebar = shown }
+            archive = cachedArchive(dir: dir)
         } catch {
             lastError = Self.text(of: error)
         }
@@ -189,6 +221,18 @@ enum MagnetiteCore {
 
     static func refresh(server: String, secret: String, dir: String) throws -> Sidebar? {
         try Magnetite.refresh(server: server, secret: secret, dir: dir)
+    }
+
+    static func refreshArchive(server: String, secret: String, dir: String) throws -> [Archived] {
+        try Magnetite.refreshArchive(server: server, secret: secret, dir: dir)
+    }
+
+    static func restore(dir: String, item: String) throws -> Sidebar? {
+        try Magnetite.restore(dir: dir, item: item)
+    }
+
+    static func forgetArchived(dir: String, item: String) throws -> [Archived] {
+        try Magnetite.forgetArchived(dir: dir, item: item)
     }
 
     static func exchange(server: String, secret: String, device: Device, tabs: [DeviceTab], dir: String) throws -> [String] {

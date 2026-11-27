@@ -27,15 +27,17 @@ final class EditingTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Wikipedia"].waitForExistence(timeout: 15))
     }
 
-    func testAPinAndARenameWaitForADesktop() {
+    func testAPinAndARenameAreWrittenIntoTheChain() {
         // Pin the page of a favorite from the page's menu.
         app.staticTexts["Example"].firstMatch.tap()
         XCTAssertTrue(app.webViews.staticTexts["Learn more"].waitForExistence(timeout: 30))
         app.buttons["More"].tap()
         app.collectionViews.buttons["Pin in “Home”"].tap()
         app.buttons["Tabs"].tap()
-        let waiting = app.images["Waiting for your computer"]
-        XCTAssertTrue(waiting.waitForExistence(timeout: 5))
+        // The pinned page shows at once; the mark that it waits goes as
+        // soon as the phone wrote it into the chain.
+        let waiting = app.images["Waiting to sync"]
+        XCTAssertTrue(waiting.waitForNonExistence(timeout: 10))
 
         // Rename a favorite by holding it.
         app.staticTexts["Wikipedia"].firstMatch.press(forDuration: 1.2)
@@ -45,14 +47,14 @@ final class EditingTests: XCTestCase {
         name.clearAndType("Wiki")
         app.alerts.buttons["Rename"].tap()
         XCTAssertTrue(app.staticTexts["Wiki"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.images.matching(identifier: "Waiting for your computer").count, 2)
-
-        // The chain hears of both; a desktop makes them; the next sync shows them made.
-        syncNow()
-        // More than two when the server still holds an earlier run's phone.
-        XCTAssertGreaterThanOrEqual(Int(demo("apply")) ?? 0, 2, "the phone listed its changes")
-        syncNow()
         XCTAssertTrue(waiting.waitForNonExistence(timeout: 10))
+
+        // The phone wrote both itself: no desktop is asked to make them,
+        // and they are still there after a sync.
+        syncNow()
+        XCTAssertEqual(demo("apply").trimmingCharacters(in: .whitespacesAndNewlines), "0", "nothing left for a desktop")
+        syncNow()
+        XCTAssertFalse(waiting.exists)
         XCTAssertTrue(app.staticTexts["Wiki"].exists)
         XCTAssertTrue(app.staticTexts["Example Domain"].exists)
     }

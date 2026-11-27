@@ -200,8 +200,8 @@ final class Browser {
         save()
     }
 
-    /// Make a change to the chain's sidebar (`Sync`), then tell the chain at
-    /// once, so a desktop makes it soon.
+    /// Make a change to the chain's sidebar or archive (`Sync`), then write
+    /// it into the chain at once.
     func change(_ change: @escaping @MainActor (Sync) async -> Void) {
         Task {
             await change(sync)

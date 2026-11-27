@@ -2,11 +2,12 @@
 
 The iPhone and iPad app of [Magnetite](https://github.com/magnetite-browser/magnetite).
 It browses with the system's web engine (WKWebView) and shows the spaces,
-favorites and pinned tabs of a sync chain. It never writes the chain's
-sidebar. What it writes is its own entry among the chain's devices: the tabs
-open on it, which another device can take over ("Send to Desktop" asks for
-that), and its changes to the sidebar (pin, favorite, new space, rename,
-remove), which a desktop of the chain makes.
+favorites and pinned tabs of a sync chain, and its archive of closed tabs.
+Its changes to the sidebar (pin, favorite, new space, rename, remove) and to
+the archive (bring a tab back, remove one for good) it writes into the chain
+itself; what it removes from the sidebar goes to the archive. It also lists
+the tabs open on it among the chain's devices, where another device can take
+them over ("Send to Desktop" asks for that).
 
 ## Build
 
